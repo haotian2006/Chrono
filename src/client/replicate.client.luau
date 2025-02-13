@@ -8,10 +8,21 @@ local Events = require(ReplicatedStorage.Events.client)
 
 local RequestServerTime = ReplicatedStorage:WaitForChild("RequestServerTime")
 
-local idMap = {} :: { [number]: { snapshot: Snapshots.SnapshotInstance, character: Model } }
+local idMap = {} :: {
+	[number]: {
+		snapshot: Snapshots.SnapshotInstance,
+		character: Model,
+		lastCFrame: CFrame?,
+	},
+}
+
 local player = Players.LocalPlayer
 
 local serverTimeOffset = 0
+
+local lerp = (math :: any).lerp
+
+local playerRenderTimes = {} :: { [number]: number }
 
 local function SynchronizeTime()
 	local clientSendTime = time()
@@ -22,9 +33,9 @@ local function SynchronizeTime()
 	serverTimeOffset = serverTime + (rtt / 2) - clientReceiveTime
 end
 
-local function GetInterpolationBuffer()
+local function GetInterpolationBuffer(): number
 	local ping = player:GetNetworkPing()
-	return math.clamp(ping * 1.0, Config.MIN_BUFFER, Config.MAX_BUFFER)
+	return math.clamp(ping * Config.PING_MULTIPLIER, Config.MIN_BUFFER, Config.MAX_BUFFER)
 end
 
 Events.ServerReplicateCFrame.On(function(serverData)
@@ -36,40 +47,61 @@ Events.ServerReplicateCFrame.On(function(serverData)
 		if not entry then
 			continue
 		end
-		entry.snapshot:PushAt(snapshotTime, cframe :: any)
+		entry.snapshot:PushAt(snapshotTime, cframe)
 	end
 end)
 
 Events.InitializePlayer.On(function(serverData)
 	local id = serverData.id
-	local player = Players[serverData.player]
+	local playerInstance = Players[serverData.player]
 
-	local registeredSnapshots = Snapshots.RegisterPlayer(player)
-	idMap[id] = { snapshot = registeredSnapshots, character = player.Character }
+	local registeredSnapshots = Snapshots.RegisterPlayer(playerInstance)
+
+	local initialRenderTime = time() + serverTimeOffset - GetInterpolationBuffer()
+
+	local initialCFrame = CFrame.new()
+	if playerInstance.Character and playerInstance.Character.PrimaryPart then
+		initialCFrame = playerInstance.Character.PrimaryPart:GetPivot()
+	end
+
+	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
+
+	idMap[id] = {
+		snapshot = registeredSnapshots,
+		character = playerInstance.Character,
+		lastCFrame = initialCFrame,
+	}
+	playerRenderTimes[id] = initialRenderTime
 end)
 
 local lastSent = time()
 local lastSentCFrame = CFrame.new()
 
-RunService.Heartbeat:Connect(function(deltaTime: number)
-	local dynamicBuffer = GetInterpolationBuffer()
-	local targetTime = time() + serverTimeOffset - dynamicBuffer
+RunService.RenderStepped:Connect(function(deltaTime: number)
+	local globalServerTime = time() + serverTimeOffset
+	local targetRenderTime = globalServerTime - GetInterpolationBuffer()
+
+	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 	for id, data in idMap do
-		local targetCFrame = data.snapshot:GetAt(targetTime)
-		if not targetCFrame then
+		if not data.character or not data.character.PrimaryPart or data.character == player.Character then
 			continue
 		end
 
-		local character = data.character
-		if not character or not character.PrimaryPart then
-			continue
+		local currentRenderTime = playerRenderTimes[id] or targetRenderTime
+		local newRenderTime = lerp(currentRenderTime, targetRenderTime, renderTimeLerpFactor)
+		playerRenderTimes[id] = newRenderTime
+
+		local targetCFrame = data.snapshot:GetAt(newRenderTime)
+		if targetCFrame then
+			if not data.lastCFrame then
+				data.lastCFrame = targetCFrame
+			else
+				local smoothFactor = math.clamp(deltaTime * Config.SMOOTHING_CONSTANT, 0, 1)
+				data.lastCFrame = data.lastCFrame:Lerp(targetCFrame, smoothFactor)
+			end
+			data.character:PivotTo(data.lastCFrame :: any)
 		end
-
-		local currentCFrame = character:GetPivot()
-		local interpolatedCFrame = currentCFrame:Lerp(targetCFrame, deltaTime * Config.INTERPOLATION_SPEED)
-
-		character:PivotTo(interpolatedCFrame)
 	end
 end)
 
@@ -95,7 +127,7 @@ SynchronizeTime()
 
 task.spawn(function()
 	while true do
-		task.wait(10)
+		task.wait(Config.TIME_SYNC_INTERVAL)
 		SynchronizeTime()
 	end
 end)

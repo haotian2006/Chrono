@@ -79,10 +79,12 @@ local function GetTickInterval(character: Model): number
 		return baseTick
 	end
 
+	local start = os.clock()
 	local nearbyPlayers = Grid.GetNearbyEntities(character, Config.PROXIMITY, { "player" })
+	print(`searched all players in {os.clock() - start}`)
 
 	if #nearbyPlayers > 1 then
-		return baseTick / 2
+		return baseTick
 	else
 		return baseTick * 2
 	end
@@ -120,3 +122,5 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		})
 	end
 end)
+
+return nil

@@ -1,5 +1,6 @@
 {
   "name": "custom-character-replication",
+  "emitLegacyScripts": false,
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -8,17 +9,11 @@
       },
       "Events": {
         "$path": "src/events"
-      }
-    },
-
-    "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "Client": {
+      },
+      "Client": {
           "$path": "src/client"
         }
-      }
     },
-
     "ServerScriptService": {
       "Services": {
         "$path": "src/server"

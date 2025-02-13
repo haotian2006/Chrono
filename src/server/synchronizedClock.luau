@@ -7,3 +7,5 @@ RequestServerTime.Parent = ReplicatedStorage
 RequestServerTime.OnServerInvoke = function()
 	return time()
 end
+
+return nil
