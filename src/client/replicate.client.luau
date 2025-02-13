@@ -6,8 +6,6 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 
-local RequestServerTime = ReplicatedStorage:WaitForChild("RequestServerTime")
-
 local idMap = {} :: {
 	[number]: {
 		snapshot: Snapshots.SnapshotInstance,
@@ -18,20 +16,9 @@ local idMap = {} :: {
 
 local player = Players.LocalPlayer
 
-local serverTimeOffset = 0
-
 local lerp = (math :: any).lerp
 
 local playerRenderTimes = {} :: { [number]: number }
-
-local function SynchronizeTime()
-	local clientSendTime = time()
-	local serverTime = RequestServerTime:InvokeServer()
-	local clientReceiveTime = time()
-
-	local rtt = clientReceiveTime - clientSendTime
-	serverTimeOffset = serverTime + (rtt / 2) - clientReceiveTime
-end
 
 local function GetInterpolationBuffer(): number
 	local ping = player:GetNetworkPing()
@@ -40,7 +27,7 @@ end
 
 Events.ServerReplicateCFrame.On(function(serverData)
 	local cframes = serverData.cframes
-	local snapshotTime = time() + serverTimeOffset
+	local snapshotTime = workspace:GetServerTimeNow()
 
 	for id, cframe in cframes do
 		local entry = idMap[id]
@@ -57,7 +44,7 @@ Events.InitializePlayer.On(function(serverData)
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(playerInstance)
 
-	local initialRenderTime = time() + serverTimeOffset - GetInterpolationBuffer()
+	local initialRenderTime = workspace:GetServerTimeNow() - GetInterpolationBuffer()
 
 	local initialCFrame = CFrame.new()
 	if playerInstance.Character and playerInstance.Character.PrimaryPart then
@@ -78,7 +65,7 @@ local lastSent = time()
 local lastSentCFrame = CFrame.new()
 
 RunService.RenderStepped:Connect(function(deltaTime: number)
-	local globalServerTime = time() + serverTimeOffset
+	local globalServerTime = workspace:GetServerTimeNow()
 	local targetRenderTime = globalServerTime - GetInterpolationBuffer()
 
 	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
@@ -120,14 +107,5 @@ RunService.Heartbeat:Connect(function()
 
 		lastSentCFrame = currentCFrame
 		Events.ClientReplicateCFrame.Fire(currentCFrame)
-	end
-end)
-
-SynchronizeTime()
-
-task.spawn(function()
-	while true do
-		task.wait(Config.TIME_SYNC_INTERVAL)
-		SynchronizeTime()
 	end
 end)
