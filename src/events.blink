@@ -1,0 +1,29 @@
+option ClientOutput = "./events/client"
+option ServerOutput = "./events/server"
+
+event ClientReplicateCFrame {
+    from: Client,
+    type: Unreliable,
+    call: SingleSync,
+    data: CFrame
+}
+
+event ServerReplicateCFrame {
+    from: Server,
+    type: Unreliable,
+    call: SingleSync,
+    data: struct {
+        timeStamp: f32,
+        cframes: map {[u8]: CFrame}
+    }
+}
+
+event InitializePlayer {
+    from: Server,
+    type: Reliable,
+    call: SingleSync,
+    data: struct {
+        id: u8,
+        player: string,
+    }
+}

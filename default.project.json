@@ -1,0 +1,28 @@
+{
+  "name": "custom-character-replication",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Events": {
+        "$path": "src/events"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+
+    "ServerScriptService": {
+      "Services": {
+        "$path": "src/server"
+      }
+    }
+  }
+}
