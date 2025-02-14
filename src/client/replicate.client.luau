@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
+local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 
 local idMap = {} :: {
 	[number]: {
@@ -20,12 +21,11 @@ local lerp = (math :: any).lerp
 
 local playerRenderTimes = {} :: { [number]: number }
 
-local function GetInterpolationBuffer(): number
-	local ping = player:GetNetworkPing()
-	return math.clamp(ping * Config.PING_MULTIPLIER, Config.MIN_BUFFER, Config.MAX_BUFFER)
-end
+local bufferTracker = InterpolationBuffer(Config.TICK_RATE, Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
 
 Events.ServerReplicateCFrame.On(function(serverData)
+	bufferTracker.RegisterPacket(serverData.timeStamp)
+
 	local cframes = serverData.cframes
 	local snapshotTime = workspace:GetServerTimeNow()
 
@@ -44,7 +44,7 @@ Events.InitializePlayer.On(function(serverData)
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(playerInstance)
 
-	local initialRenderTime = workspace:GetServerTimeNow() - GetInterpolationBuffer()
+	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
 
 	local initialCFrame = CFrame.new()
 	if playerInstance.Character and playerInstance.Character.PrimaryPart then
@@ -66,8 +66,8 @@ local lastSentCFrame = CFrame.new()
 
 RunService.RenderStepped:Connect(function(deltaTime: number)
 	local globalServerTime = workspace:GetServerTimeNow()
-	local targetRenderTime = globalServerTime - GetInterpolationBuffer()
-
+	local targetRenderTime = globalServerTime - bufferTracker.GetBuffer()
+	print(bufferTracker.GetBuffer())
 	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 	for id, data in idMap do
