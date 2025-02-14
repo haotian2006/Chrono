@@ -1,4 +1,4 @@
-# Custom replication v.0.0.0
+# Custom replication v.0.1.0
 
 ###
 Current initial release, expect bugs, glitches etc. Do not use in actual game.
