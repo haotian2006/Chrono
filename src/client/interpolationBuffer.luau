@@ -1,4 +1,4 @@
-return function(tickRate: number, minBuffer: number, maxBuffer: number, alpha)
+return function(tickRate: number, minBuffer: number, maxBuffer: number, alpha: number)
 	local averageLatency = 0
 	local deviation = 0
 	local lastLatency = nil
