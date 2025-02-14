@@ -67,7 +67,7 @@ local lastSentCFrame = CFrame.new()
 RunService.RenderStepped:Connect(function(deltaTime: number)
 	local globalServerTime = workspace:GetServerTimeNow()
 	local targetRenderTime = globalServerTime - bufferTracker.GetBuffer()
-	print(bufferTracker.GetBuffer())
+
 	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 	for id, data in idMap do
