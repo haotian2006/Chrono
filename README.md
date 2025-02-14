@@ -16,3 +16,4 @@ Features:
 Upcoming:
 * Custom characters - Characters parented to the camera do not replicate to the client, but they are physically simulated. Using this, I can completely disable roblox's character replication, create my own custom character controller - and potentially a custom animation system
 * Dynamic precision compression 
+* Dead-reckoning
