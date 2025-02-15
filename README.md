@@ -17,4 +17,6 @@ Features:
 Upcoming:
 * Custom character controller & server authoritative movement
 * Dynamic precision compression 
+* f16s for position and u8 for Y rotation
+* Incorporate tick based timestamp system to be able to reduce timestamps from f32 -> u8
 * Dead-reckoning
