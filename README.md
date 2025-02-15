@@ -12,7 +12,7 @@ Features:
 * Dynamic interpolation buffer - My interpolation buffer is dynamically calculated using tick rate + the average latency of the preceding packets - and then checking the packet offset distance between the arrived & average latency
 * Snapshot interpolation - Smoothly interpolates between snapshots to provide non jittery movement mechanics and deal with packet loss.
 * Buffer based networking - Packs data into buffers to lower bandwidth even at higher tick rates.
-* Custom characters - Characters parented to the camera do not replicate to the client, but they are physically simulated. Using this, I can completely disable roblox's character replication.
+* Custom characters - Characters parented to the camera do not replicate to the client, but they are physically simulated. Using this, I can completely disable roblox's character replication - and create my own simulated rig on the client.
 
 Upcoming:
 * Custom character controller & server authoritative movement
