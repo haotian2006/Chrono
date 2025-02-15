@@ -80,6 +80,10 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 	--GetServerTimeNow() is really nice, because it accounts for the RTT and can serve as the game world's timestamp.
 	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
 	local globalServerTime = workspace:GetServerTimeNow()
+	--GetBuffer returns the interpolation buffer, which is the length of the buffer + your latency. The latency is the remote latency, but the buffer time itself accounts for the varying latency, packet loss, delayed packets - and smooths it out.
+	--snapshot timestamps are attached by the server, and the interpolation actually needs to start it from where the client receives it
+	--tldr, GetBuffer will by minimum return GetServerTimeNow() - latency in a perfect world scenario
+	--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
 	local targetRenderTime = globalServerTime - bufferTracker.GetBuffer()
 
 	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
@@ -90,6 +94,7 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 		end
 
 		--get the entity snapshot at the new render time - a smoothly interpolated value between the current and target render time.
+		--warning: having a too high lerp factor may increase the "interpolation buffer" - experiment with lower values / directly setting the render time.
 		--snapshots library internalls holds historical data to interpolate smoothly and avoid jitter.
 		--further logic is an implementation detail.
 		local currentRenderTime = playerRenderTimes[id] or targetRenderTime
