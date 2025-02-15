@@ -29,6 +29,8 @@ end
 
 local function OnCharacterAdded(player: Player, character: Model, id: number)
 	if config.ENABLE_CUSTOM_CHARACTERS then
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
+		humanoidRootPart.Anchored = true
 		character.Parent = workspace.CurrentCamera
 	end
 	Grid.AddEntity(character, "player")
