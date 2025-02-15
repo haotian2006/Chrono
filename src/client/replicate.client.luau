@@ -48,6 +48,7 @@ Events.InitializePlayer.On(function(serverData)
 
 	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
 
+	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
 	if config.ENABLE_CUSTOM_CHARACTERS then
 		if player == playerInstance then
 			playerInstance.Character = ClientRig(playerInstance).Model
@@ -76,6 +77,8 @@ local lastSent = time()
 local lastSentCFrame = CFrame.new()
 
 RunService.RenderStepped:Connect(function(deltaTime: number)
+	--GetServerTimeNow() is really nice, because it accounts for the RTT and can serve as the game world's timestamp.
+	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
 	local globalServerTime = workspace:GetServerTimeNow()
 	local targetRenderTime = globalServerTime - bufferTracker.GetBuffer()
 
@@ -86,6 +89,9 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 			continue
 		end
 
+		--get the entity snapshot at the new render time - a smoothly interpolated value between the current and target render time.
+		--snapshots library internalls holds historical data to interpolate smoothly and avoid jitter.
+		--further logic is an implementation detail.
 		local currentRenderTime = playerRenderTimes[id] or targetRenderTime
 		local newRenderTime = lerp(currentRenderTime, targetRenderTime, renderTimeLerpFactor)
 		playerRenderTimes[id] = newRenderTime
@@ -111,7 +117,7 @@ RunService.Heartbeat:Connect(function()
 
 	if player.Character and player.Character.PrimaryPart then
 		local currentCFrame = player.Character.PrimaryPart:GetPivot()
-
+		--if player did not move, don't network the change.
 		if lastSentCFrame:FuzzyEq(currentCFrame, 0.1) then
 			return
 		end

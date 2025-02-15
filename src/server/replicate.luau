@@ -19,6 +19,7 @@ local MAX_ID = 255
 local IncrementalFactoryUID = 0
 
 local function GetNextID(): number
+	--for reference, we are using u8s for now.
 	if IncrementalFactoryUID + 1 == MAX_ID then
 		error("Max ID reached, please investigate.")
 	end
