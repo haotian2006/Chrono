@@ -6,7 +6,6 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
-local config = require(ReplicatedStorage.Shared.config)
 
 local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: { [number]: {
@@ -29,7 +28,7 @@ local function GetNextID(): number
 end
 
 local function OnCharacterAdded(player: Player, character: Model, id: number)
-	if config.ENABLE_CUSTOM_CHARACTERS then
+	if Config.ENABLE_CUSTOM_CHARACTERS then
 		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
 		humanoidRootPart.Anchored = true
 		character.Parent = workspace.CurrentCamera
