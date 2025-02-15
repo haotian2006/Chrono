@@ -26,16 +26,16 @@ local function GetNextID(): number
 	return IncrementalFactoryUID
 end
 
-local function onCharacterAdded(player: Player, character: Model, id: number)
+local function OnCharacterAdded(player: Player, character: Model, id: number)
+	character.Parent = workspace.CurrentCamera
 	Grid.AddEntity(character, "player")
-
 	Events.InitializePlayer.FireAll({
 		id = id,
 		player = player.Name,
 	})
 end
 
-local function onCharacterRemoving(character: Model)
+local function OnCharacterRemoving(character: Model)
 	Grid.RemoveEntity(character)
 end
 
@@ -49,9 +49,9 @@ Players.PlayerAdded:Connect(function(player)
 	lastReplicatedTimes[id] = 0
 
 	player.CharacterAdded:Connect(function(character)
-		onCharacterAdded(player, character, id)
+		OnCharacterAdded(player, character, id)
 	end)
-	player.CharacterRemoving:Connect(onCharacterRemoving)
+	player.CharacterRemoving:Connect(OnCharacterRemoving)
 end)
 
 Players.PlayerRemoving:Connect(function(player)

@@ -6,6 +6,7 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
+local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
 local idMap = {} :: {
 	[number]: {
@@ -45,6 +46,13 @@ Events.InitializePlayer.On(function(serverData)
 	local registeredSnapshots = Snapshots.RegisterPlayer(playerInstance)
 
 	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
+
+	if player == playerInstance then
+		playerInstance.Character = ClientRig(playerInstance).Model
+		workspace.CurrentCamera.CameraSubject = playerInstance.Character
+	else
+		playerInstance.Character = ClientRig(playerInstance).Model
+	end
 
 	local initialCFrame = CFrame.new()
 	if playerInstance.Character and playerInstance.Character.PrimaryPart then
