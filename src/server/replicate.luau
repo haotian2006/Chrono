@@ -6,6 +6,7 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
+local config = require(ReplicatedStorage.Shared.config)
 
 local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: { [number]: {
@@ -27,7 +28,9 @@ local function GetNextID(): number
 end
 
 local function OnCharacterAdded(player: Player, character: Model, id: number)
-	character.Parent = workspace.CurrentCamera
+	if config.ENABLE_CUSTOM_CHARACTERS then
+		character.Parent = workspace.CurrentCamera
+	end
 	Grid.AddEntity(character, "player")
 	Events.InitializePlayer.FireAll({
 		id = id,

@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
+local config = require(ReplicatedStorage.Shared.config)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
@@ -47,11 +48,13 @@ Events.InitializePlayer.On(function(serverData)
 
 	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
 
-	if player == playerInstance then
-		playerInstance.Character = ClientRig(playerInstance).Model
-		workspace.CurrentCamera.CameraSubject = playerInstance.Character
-	else
-		playerInstance.Character = ClientRig(playerInstance).Model
+	if config.ENABLE_CUSTOM_CHARACTERS then
+		if player == playerInstance then
+			playerInstance.Character = ClientRig(playerInstance).Model
+			workspace.CurrentCamera.CameraSubject = playerInstance.Character
+		else
+			playerInstance.Character = ClientRig(playerInstance).Model
+		end
 	end
 
 	local initialCFrame = CFrame.new()
