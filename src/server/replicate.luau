@@ -7,12 +7,15 @@ local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
 
+local MakeNetworkable = require(ReplicatedStorage.Shared.makeNetworkable)
+
 local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: { [number]: {
 	player: Player,
 	snapshot: Snapshots.SnapshotInstance,
 } }
 local lastReplicatedTimes = {} :: { [number]: number }
+local netCFrameMap = {} :: { [Player]: MakeNetworkable.Networkable }
 
 local MAX_ID = 255
 local IncrementalFactoryUID = 0
@@ -52,6 +55,7 @@ Players.PlayerAdded:Connect(function(player)
 		snapshot = Snapshots.RegisterPlayer(player),
 	}
 	lastReplicatedTimes[id] = 0
+	netCFrameMap[player] = MakeNetworkable(CFrame.new())
 
 	player.CharacterAdded:Connect(function(character)
 		OnCharacterAdded(player, character, id)
@@ -68,14 +72,17 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-Events.ClientReplicateCFrame.On(function(player, cframe)
+Events.ClientReplicateCFrame.On(function(player, deltaCFrame)
+	local netCFrame = netCFrameMap[player]
+	local newCFrame = netCFrame.Apply(deltaCFrame)
+
 	local id = playerIdMap[player]
 	local data = idMap[id]
 	if not data then
 		return
 	end
 
-	data.snapshot:PushAt(workspace:GetServerTimeNow(), cframe)
+	data.snapshot:PushAt(workspace:GetServerTimeNow(), newCFrame)
 end)
 
 local function GetTickInterval(character: Model): number
