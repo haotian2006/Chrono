@@ -7,7 +7,7 @@ local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
 
-local MakeNetworkable = require(ReplicatedStorage.Shared.makeNetworkable)
+local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
 local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: { [number]: {
@@ -15,7 +15,7 @@ local idMap = {} :: { [number]: {
 	snapshot: Snapshots.SnapshotInstance,
 } }
 local lastReplicatedTimes = {} :: { [number]: number }
-local netCFrameMap = {} :: { [Player]: MakeNetworkable.Networkable }
+local netCFrameMap = {} :: { [Player]: Networkables.Networkable }
 
 local MAX_ID = 255
 local IncrementalFactoryUID = 0
@@ -30,30 +30,13 @@ local function GetNextID(): number
 	return IncrementalFactoryUID
 end
 
-local function GetTickInterval(character: Model): number
-	local baseTick = Config.TICK_RATE
-	if not character then
-		return baseTick
-	end
-
-	local nearbyPlayers = Grid.GetNearbyEntities(character, Config.PROXIMITY, { "player" })
-
-	if #nearbyPlayers > 1 then
-		return baseTick
-	else
-		return baseTick * 2
-	end
-end
-
 local function OnCharacterAdded(player: Player, character: Model, id: number)
 	if Config.ENABLE_CUSTOM_CHARACTERS then
 		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
 		humanoidRootPart.Anchored = true
 		character.Parent = workspace.CurrentCamera
 	end
-
 	Grid.AddEntity(character, "player")
-
 	Events.InitializePlayer.FireAll({
 		id = id,
 		player = player.Name,
@@ -64,7 +47,7 @@ local function OnCharacterRemoving(character: Model)
 	Grid.RemoveEntity(character)
 end
 
-local function initExistingPlayers(player: Player)
+local function InitExistingPlayers(player: Player)
 	local playerData = {}
 
 	for existingPlayer, _ in playerIdMap do
@@ -86,35 +69,32 @@ local function initExistingPlayers(player: Player)
 	Events.InitializeExistingPlayers.Fire(player, playerData)
 end
 
-local function PlayerAdded(player: Player)
+Players.PlayerAdded:Connect(function(player: Player)
 	local id = GetNextID()
 	playerIdMap[player] = id
-	
 	idMap[id] = {
 		player = player,
 		snapshot = Snapshots.RegisterPlayer(player),
 	}
 	lastReplicatedTimes[id] = 0
-	netCFrameMap[player] = MakeNetworkable(CFrame.new())
+	netCFrameMap[player] = Networkables.MakeNetworkable(CFrame.new(0, 4, 0))
 
-	initExistingPlayers(player)
+	InitExistingPlayers(player)
 
 	player.CharacterAdded:Connect(function(character)
 		OnCharacterAdded(player, character, id)
 	end)
-	
 	player.CharacterRemoving:Connect(OnCharacterRemoving)
-end
+end)
 
-local function PlayerRemoving(player: Player)
+Players.PlayerRemoving:Connect(function(player)
 	local id = playerIdMap[player]
-
 	if id then
 		idMap[id] = nil
 		lastReplicatedTimes[id] = nil
 		playerIdMap[player] = nil
 	end
-end
+end)
 
 Events.ClientReplicateCFrame.On(function(player, deltaCFrame)
 	local netCFrame = netCFrameMap[player]
@@ -129,7 +109,22 @@ Events.ClientReplicateCFrame.On(function(player, deltaCFrame)
 	data.snapshot:PushAt(workspace:GetServerTimeNow(), newCFrame)
 end)
 
-RunService.Heartbeat:Connect(function()
+local function GetTickInterval(character: Model): number
+	local baseTick = Config.TICK_RATE
+	if not character then
+		return baseTick
+	end
+
+	local nearbyPlayers = Grid.GetNearbyEntities(character, Config.PROXIMITY, { "player" })
+
+	if #nearbyPlayers > 1 then
+		return baseTick
+	else
+		return baseTick * 2
+	end
+end
+
+RunService.Heartbeat:Connect(function(deltaTime)
 	local currentTime = workspace:GetServerTimeNow()
 	Grid.UpdateGrid()
 
@@ -156,13 +151,10 @@ RunService.Heartbeat:Connect(function()
 
 	if next(cframes) then
 		Events.ServerReplicateCFrame.FireAll({
-			cframes = cframes,
+			cframes = Networkables.NetworkableCFrameTable(cframes),
 			timeStamp = workspace:GetServerTimeNow(),
 		})
 	end
 end)
-
-Players.PlayerAdded:Connect(PlayerAdded)
-Players.PlayerRemoving:Connect(PlayerRemoving)
 
 return nil

@@ -5,7 +5,14 @@ event ClientReplicateCFrame {
     from: Client,
     type: Unreliable,
     call: SingleSync,
-    data: CFrame
+    data: struct {
+        Position: vector<f16>,
+        Rotation: struct {
+            x: f16,
+            y: f16,
+            z: f16,
+        },
+    }
 }
 
 event ServerReplicateCFrame {
@@ -14,7 +21,14 @@ event ServerReplicateCFrame {
     call: SingleSync,
     data: struct {
         timeStamp: f32,
-        cframes: map {[u8]: CFrame}
+        cframes: map {[u8]: struct {
+            Position: vector<f16>,
+            Rotation: struct {
+                x: f16,
+                y: f16,
+                z: f16,
+            },
+        }},
     }
 }
 

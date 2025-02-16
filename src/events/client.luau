@@ -24,127 +24,127 @@ local RecieveInstances = {}
 local RecieveInstanceCursor = 0
 
 type Entry = {
-    value: any,
-    next: Entry?
+	value: any,
+	next: Entry?,
 }
 
 type Queue = {
-    head: Entry?,
-    tail: Entry?
+	head: Entry?,
+	tail: Entry?,
 }
 
 type BufferSave = {
-    Size: number, 
-    Cursor: number, 
-    Buffer: buffer, 
-    Instances: {Instance}
+	Size: number,
+	Cursor: number,
+	Buffer: buffer,
+	Instances: { Instance },
 }
 
 local function Read(Bytes: number)
-    local Offset = RecieveCursor
-    RecieveCursor += Bytes
-    return Offset
+	local Offset = RecieveCursor
+	RecieveCursor += Bytes
+	return Offset
 end
 
 local function Save(): BufferSave
-    return {
-        Size = SendSize,
-        Cursor = SendCursor,
-        Buffer = SendBuffer,
-        Instances = SendInstances
-    }
+	return {
+		Size = SendSize,
+		Cursor = SendCursor,
+		Buffer = SendBuffer,
+		Instances = SendInstances,
+	}
 end
 
 local function Load(Save: BufferSave?)
-    if Save then
-        SendSize = Save.Size
-        SendCursor = Save.Cursor
-        SendOffset = Save.Cursor
-        SendBuffer = Save.Buffer
-        SendInstances = Save.Instances
-        return
-    end
+	if Save then
+		SendSize = Save.Size
+		SendCursor = Save.Cursor
+		SendOffset = Save.Cursor
+		SendBuffer = Save.Buffer
+		SendInstances = Save.Instances
+		return
+	end
 
-    SendSize = 64
-    SendCursor = 0
-    SendOffset = 0
-    SendBuffer = buffer.create(64)
-    SendInstances = {}
+	SendSize = 64
+	SendCursor = 0
+	SendOffset = 0
+	SendBuffer = buffer.create(64)
+	SendInstances = {}
 end
 
 local function Invoke()
-    if Invocations == 255 then
-        Invocations = 0
-    end
+	if Invocations == 255 then
+		Invocations = 0
+	end
 
-    local Invocation = Invocations
-    Invocations += 1
-    return Invocation
+	local Invocation = Invocations
+	Invocations += 1
+	return Invocation
 end
 
 local function Allocate(Bytes: number)
-    local InUse = (SendCursor + Bytes)
-    if InUse > SendSize then
-        --> Avoid resizing the buffer for every write
-        while InUse > SendSize do
-            SendSize *= 1.5
-        end
+	local InUse = (SendCursor + Bytes)
+	if InUse > SendSize then
+		--> Avoid resizing the buffer for every write
+		while InUse > SendSize do
+			SendSize *= 1.5
+		end
 
-        local Buffer = buffer.create(SendSize)
-        buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
-        SendBuffer = Buffer
-    end
+		local Buffer = buffer.create(SendSize)
+		buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
+		SendBuffer = Buffer
+	end
 
-    SendOffset = SendCursor
-    SendCursor += Bytes
-    
-    return SendOffset
+	SendOffset = SendCursor
+	SendCursor += Bytes
+
+	return SendOffset
 end
 
 local function CreateQueue(): Queue
-    return {
-        head = nil,
-        tail = nil
-    }
+	return {
+		head = nil,
+		tail = nil,
+	}
 end
 
 local function Pop(queue: Queue): any
-    local head = queue.head
-    if head == nil then
-        return
-    end
+	local head = queue.head
+	if head == nil then
+		return
+	end
 
-    queue.head = head.next
-    return head.value
+	queue.head = head.next
+	return head.value
 end
 
 local function Push(queue: Queue, value: any)
-    local entry: Entry = {
-        value = value,
-        next = nil
-    }
+	local entry: Entry = {
+		value = value,
+		next = nil,
+	}
 
-    if queue.tail ~= nil then
-        queue.tail.next = entry
-    end
+	if queue.tail ~= nil then
+		queue.tail.next = entry
+	end
 
-    queue.tail = entry
+	queue.tail = entry
 
-    if queue.head == nil then
-        queue.head = entry
-    end
+	if queue.head == nil then
+		queue.head = entry
+	end
 end
 
 local Calls = table.create(256)
 
 local Events: any = {
-    Reliable = table.create(256),
-    Unreliable = table.create(256)
+	Reliable = table.create(256),
+	Unreliable = table.create(256),
 }
 
 local Queue: any = {
-    Reliable = table.create(256),
-    Unreliable = table.create(256)
+	Reliable = table.create(256),
+	Unreliable = table.create(256),
 }
 
 Queue.Unreliable[1] = table.create(256)
@@ -152,21 +152,85 @@ Events.Reliable[0] = {}
 Queue.Reliable[0] = table.create(256)
 Events.Reliable[1] = {}
 Queue.Reliable[1] = table.create(256)
-local function WriteEVENT_ClientReplicateCFrame(Value: CFrame): ()
-	-- Allocate BLOCK: 25 bytes
-	local BLOCK_START = Allocate(25)
+local function WriteEVENT_ClientReplicateCFrame(
+	Value: { Position: Vector3, Rotation: { x: number, y: number, z: number } }
+): ()
+	-- Allocate BLOCK: 19 bytes
+	local BLOCK_START = Allocate(19)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 0)
 	local Vector = Value.Position
 	buffer.writef32(SendBuffer, BLOCK_START + 1, Vector.X)
 	buffer.writef32(SendBuffer, BLOCK_START + 5, Vector.Y)
 	buffer.writef32(SendBuffer, BLOCK_START + 9, Vector.Z)
-	local rX, rY, rZ = Value:ToOrientation()
-	buffer.writef32(SendBuffer, BLOCK_START + 13, rX)
-	buffer.writef32(SendBuffer, BLOCK_START + 17, rY)
-	buffer.writef32(SendBuffer, BLOCK_START + 21, rZ)
+	if Value.Rotation.x > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b0_11111_0000000000)
+	elseif Value.Rotation.x < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b1_11111_0000000000)
+	elseif Value.Rotation.x ~= Value.Rotation.x then
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b1_11111_0000000001)
+	elseif Value.Rotation.x == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0)
+	else
+		local float = Value.Rotation.x
+		local Abosulte = math.abs(float)
+		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+		local RoundedValue = (Abosulte // Interval) * Interval
+		local Fraction, Exponent = math.frexp(RoundedValue)
+		Exponent += 14
+		local Mantissa = math.round(
+			if Exponent <= 0 then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent)) else Fraction * 0x800
+		) % 0x400
+		local Result = Mantissa + math.max(Exponent, 0) * 0x400 + if float < 0 then 0x8000 else 0
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, Result)
+	end
+	if Value.Rotation.y > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b0_11111_0000000000)
+	elseif Value.Rotation.y < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b1_11111_0000000000)
+	elseif Value.Rotation.y ~= Value.Rotation.y then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b1_11111_0000000001)
+	elseif Value.Rotation.y == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0)
+	else
+		local float = Value.Rotation.y
+		local Abosulte = math.abs(float)
+		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+		local RoundedValue = (Abosulte // Interval) * Interval
+		local Fraction, Exponent = math.frexp(RoundedValue)
+		Exponent += 14
+		local Mantissa = math.round(
+			if Exponent <= 0 then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent)) else Fraction * 0x800
+		) % 0x400
+		local Result = Mantissa + math.max(Exponent, 0) * 0x400 + if float < 0 then 0x8000 else 0
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, Result)
+	end
+	if Value.Rotation.z > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b0_11111_0000000000)
+	elseif Value.Rotation.z < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b1_11111_0000000000)
+	elseif Value.Rotation.z ~= Value.Rotation.z then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b1_11111_0000000001)
+	elseif Value.Rotation.z == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0)
+	else
+		local float = Value.Rotation.z
+		local Abosulte = math.abs(float)
+		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+		local RoundedValue = (Abosulte // Interval) * Interval
+		local Fraction, Exponent = math.frexp(RoundedValue)
+		Exponent += 14
+		local Mantissa = math.round(
+			if Exponent <= 0 then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent)) else Fraction * 0x800
+		) % 0x400
+		local Result = Mantissa + math.max(Exponent, 0) * 0x400 + if float < 0 then 0x8000 else 0
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, Result)
+	end
 end
 
-local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamp: number, cframes: {[number]: CFrame} })
+local function ReadEVENT_ServerReplicateCFrame(): {
+	timeStamp: number,
+	cframes: { [number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } } },
+}
 	-- Read BLOCK: 6 bytes
 	local BLOCK_START = Read(6)
 	local Value = {} :: any
@@ -176,26 +240,96 @@ local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamp: number, cframes:
 	for _ = 1, Elements_1 do
 		local OFFSET_0 = Read(1)
 		local Key_1 = buffer.readu8(RecieveBuffer, OFFSET_0)
+		local Element_1 = {} :: any
 		local OFFSET_1 = Read(4)
 		local X = buffer.readf32(RecieveBuffer, OFFSET_1)
 		local OFFSET_2 = Read(4)
 		local Y = buffer.readf32(RecieveBuffer, OFFSET_2)
 		local OFFSET_3 = Read(4)
 		local Z = buffer.readf32(RecieveBuffer, OFFSET_3)
-		local Position = Vector3.new(X, Y, Z)
-		local OFFSET_4 = Read(4)
-		local rX = buffer.readf32(RecieveBuffer, OFFSET_4)
-		local OFFSET_5 = Read(4)
-		local rY = buffer.readf32(RecieveBuffer, OFFSET_5)
-		local OFFSET_6 = Read(4)
-		local rZ = buffer.readf32(RecieveBuffer, OFFSET_6)
-		local Element_1 = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)
+		Element_1.Position = Vector3.new(X, Y, Z)
+		Element_1.Rotation = {} :: any
+		local OFFSET_4 = Read(2)
+		local Encoded = buffer.readu16(RecieveBuffer, OFFSET_4)
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000 then
+			if Encoded // 0x8000 == 1 then
+				Element_1.Rotation.x = -math.huge
+			else
+				Element_1.Rotation.x = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000 then
+			Element_1.Rotation.x = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000 then
+			Element_1.Rotation.x = 0
+		else
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Element_1.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
+		end
+		local OFFSET_5 = Read(2)
+		Encoded = buffer.readu16(RecieveBuffer, OFFSET_5)
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000 then
+			if Encoded // 0x8000 == 1 then
+				Element_1.Rotation.y = -math.huge
+			else
+				Element_1.Rotation.y = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000 then
+			Element_1.Rotation.y = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000 then
+			Element_1.Rotation.y = 0
+		else
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Element_1.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
+		end
+		local OFFSET_6 = Read(2)
+		Encoded = buffer.readu16(RecieveBuffer, OFFSET_6)
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000 then
+			if Encoded // 0x8000 == 1 then
+				Element_1.Rotation.z = -math.huge
+			else
+				Element_1.Rotation.z = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000 then
+			Element_1.Rotation.z = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000 then
+			Element_1.Rotation.z = 0
+		else
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Element_1.Rotation.z = if Encoded // 0x8000 == 1 then -Result else Result
+		end
 		Value.cframes[Key_1] = Element_1
 	end
 	return Value
 end
 
-local function ReadEVENT_InitializePlayer(): ({ id: number, player: string })
+local function ReadEVENT_InitializePlayer(): { id: number, player: string }
 	-- Read BLOCK: 3 bytes
 	local BLOCK_START = Read(3)
 	local Value = {} :: any
@@ -205,15 +339,19 @@ local function ReadEVENT_InitializePlayer(): ({ id: number, player: string })
 	return Value
 end
 
-local function ReadEVENT_InitializeExistingPlayers(): ({ { id: number, player: string } })
+local function ReadEVENT_InitializeExistingPlayers(): { { id: number, player: string } }
 	-- Read BLOCK: 2 bytes
 	local BLOCK_START = Read(2)
 	-- START ARRAY
 	local Length = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
-	if Length < 0 then error(`Expected "Length" to be larger than 0, got {Length} instead.`) end
-	if Length > 65535 then error(`Expected "Length" to be smaller than 65535, got {Length} instead.`) end
+	if Length < 0 then
+		error(`Expected "Length" to be larger than 0, got {Length} instead.`)
+	end
+	if Length > 65535 then
+		error(`Expected "Length" to be smaller than 65535, got {Length} instead.`)
+	end
 	local Value = table.create(Length)
-		-- Read BLOCK: 3 bytes
+	-- Read BLOCK: 3 bytes
 	local ARRAY_START_1 = Read(3 * Length)
 	for Index = 1, Length do
 		local Item_1 = {} :: any
@@ -235,43 +373,44 @@ end
 if not RunService:IsRunning() then
 	local NOOP = function() end
 	local Returns = table.freeze({
-	ClientReplicateCFrame = {
-		Fire = NOOP
-	},
-	ServerReplicateCFrame = {
-		On = NOOP
-	},
-	InitializePlayer = {
-		On = NOOP
-	},
-	InitializeExistingPlayers = {
-		On = NOOP
-	},
+		ClientReplicateCFrame = {
+			Fire = NOOP,
+		},
+		ServerReplicateCFrame = {
+			On = NOOP,
+		},
+		InitializePlayer = {
+			On = NOOP,
+		},
+		InitializeExistingPlayers = {
+			On = NOOP,
+		},
 	})
 	return Returns :: BLINK_EVENTS_SYMBOL
 end
 
 if not RunService:IsClient() then
-    error("Client network module can only be required from the client.")
+	error("Client network module can only be required from the client.")
 end
 
 local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("BLINK_RELIABLE_REMOTE") :: RemoteEvent
-local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
+local Unreliable: UnreliableRemoteEvent =
+	ReplicatedStorage:WaitForChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
 
 local function StepReplication()
-    if SendCursor <= 0 then
-        return
-    end
+	if SendCursor <= 0 then
+		return
+	end
 
-    local Buffer = buffer.create(SendCursor)
-    buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
-    Reliable:FireServer(Buffer, SendInstances)
+	local Buffer = buffer.create(SendCursor)
+	buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
+	Reliable:FireServer(Buffer, SendInstances)
 
-    SendSize = 64
-    SendCursor = 0
-    SendOffset = 0
-    SendBuffer = buffer.create(64)
-    table.clear(SendInstances)
+	SendSize = 64
+	SendCursor = 0
+	SendOffset = 0
+	SendBuffer = buffer.create(64)
+	table.clear(SendInstances)
 end
 local Elapsed = 0
 RunService.Heartbeat:Connect(function(DeltaTime: number)
@@ -281,13 +420,13 @@ RunService.Heartbeat:Connect(function(DeltaTime: number)
 		StepReplication()
 	end
 end)
-Reliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
+Reliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: { Instance })
 	RecieveCursor = 0
 	RecieveBuffer = Buffer
 	RecieveInstances = Instances
 	RecieveInstanceCursor = 0
 	local Size = buffer.len(RecieveBuffer)
-	while (RecieveCursor < Size) do
+	while RecieveCursor < Size do
 		-- Read BLOCK: 1 bytes
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
@@ -299,9 +438,11 @@ Reliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 				end
 			else
 				if #Queue.Reliable[0] > 256 then
-					warn("[Blink]: Event queue of \"InitializePlayer\" exceeded 256, did you forget to implement a listener?")
+					warn(
+						'[Blink]: Event queue of "InitializePlayer" exceeded 256, did you forget to implement a listener?'
+					)
 				end
-				table.insert(Queue.Reliable[0], {Value} :: {any})
+				table.insert(Queue.Reliable[0], { Value } :: { any })
 			end
 		elseif Index == 1 then
 			local Value: { { id: number, player: string } } = ReadEVENT_InitializeExistingPlayers()
@@ -311,25 +452,31 @@ Reliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 				end
 			else
 				if #Queue.Reliable[1] > 256 then
-					warn("[Blink]: Event queue of \"InitializeExistingPlayers\" exceeded 256, did you forget to implement a listener?")
+					warn(
+						'[Blink]: Event queue of "InitializeExistingPlayers" exceeded 256, did you forget to implement a listener?'
+					)
 				end
-				table.insert(Queue.Reliable[1], {Value} :: {any})
+				table.insert(Queue.Reliable[1], { Value } :: { any })
 			end
 		end
 	end
 end)
-Unreliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
+Unreliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: { Instance })
 	RecieveCursor = 0
 	RecieveBuffer = Buffer
 	RecieveInstances = Instances
 	RecieveInstanceCursor = 0
 	local Size = buffer.len(RecieveBuffer)
-	while (RecieveCursor < Size) do
+	while RecieveCursor < Size do
 		-- Read BLOCK: 1 bytes
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 1 then
-			local Value: { timeStamp: number, cframes: {[number]: CFrame} } = ReadEVENT_ServerReplicateCFrame()
+			local Value: {
+				timeStamp: number,
+				cframes: { [number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } } },
+			} =
+				ReadEVENT_ServerReplicateCFrame()
 			if Events.Unreliable[1] ~= nil then
 				Events.Unreliable[1](Value)
 			end
@@ -337,12 +484,11 @@ Unreliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 	end
 end)
 
-
 local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		Fire = function(Value: CFrame): ()
+		Fire = function(Value: { Position: Vector3, Rotation: { x: number, y: number, z: number } }): ()
 			local Previous = Save()
 			Load()
 			WriteEVENT_ClientReplicateCFrame(Value)
@@ -350,15 +496,20 @@ local Returns = table.freeze({
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireServer(Buffer, SendInstances)
 			Load(Previous)
-		end
+		end,
 	},
 	ServerReplicateCFrame = {
-		On = function(Listener: (Value: { timeStamp: number, cframes: {[number]: CFrame} }) -> ()): () -> ()
+		On = function(Listener: (
+			Value: {
+				timeStamp: number,
+				cframes: { [number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } } },
+			}
+		) -> ()): () -> ()
 			Events.Unreliable[1] = Listener
-			return function (): ()
+			return function(): ()
 				Events.Unreliable[1] = nil
 			end
-		end
+		end,
 	},
 	InitializePlayer = {
 		On = function(Listener: (Value: { id: number, player: string }) -> ()): () -> ()
@@ -367,10 +518,10 @@ local Returns = table.freeze({
 				task.spawn(Listener, table.unpack(Arguments))
 			end
 			Queue.Reliable[0] = {}
-			return function (): ()
+			return function(): ()
 				table.remove(Events.Reliable[0], table.find(Events.Reliable[0], Listener))
 			end
-		end
+		end,
 	},
 	InitializeExistingPlayers = {
 		On = function(Listener: (Value: { { id: number, player: string } }) -> ()): () -> ()
@@ -379,10 +530,10 @@ local Returns = table.freeze({
 				task.spawn(Listener, table.unpack(Arguments))
 			end
 			Queue.Reliable[1] = {}
-			return function (): ()
+			return function(): ()
 				table.remove(Events.Reliable[1], table.find(Events.Reliable[1], Listener))
 			end
-		end
+		end,
 	},
 })
 type BLINK_EVENTS_SYMBOL = typeof(Returns)

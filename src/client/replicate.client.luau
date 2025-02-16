@@ -7,7 +7,7 @@ local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
-local MakeNetworkable = require(ReplicatedStorage.Shared.makeNetworkable)
+local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
 local idMap = {} :: {
 	[number]: {
@@ -17,18 +17,32 @@ local idMap = {} :: {
 	},
 }
 
-local localPlayer = Players.LocalPlayer
-
+local player = Players.LocalPlayer
 local lerp = (math :: any).lerp
-local playerRenderTimes = {} :: { [number]: number }
 local initializedPlayers = {} :: { [Player]: boolean }
 local characters = {} :: { [Player]: Model }
 
+local playerRenderTimes = {} :: { [number]: number }
 local bufferTracker = InterpolationBuffer(Config.TICK_RATE, Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
 
 local networkedCFrame = nil
 
-local function playerAdded(player: Player, id: number)
+Events.ServerReplicateCFrame.On(function(serverData)
+	bufferTracker.RegisterPacket(serverData.timeStamp)
+
+	local cframes = serverData.cframes
+	local snapshotTime = workspace:GetServerTimeNow()
+
+	for id, cframe in cframes do
+		local entry = idMap[id]
+		if not entry then
+			continue
+		end
+		entry.snapshot:PushAt(snapshotTime, Networkables.DecodeCFrame(cframe))
+	end
+end)
+
+local function PlayerAdded(player: Player, id: number)
 	if initializedPlayers[player] then
 		warn("Player already initialized", player)
 		return
@@ -43,15 +57,19 @@ local function playerAdded(player: Player, id: number)
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
 	if Config.ENABLE_CUSTOM_CHARACTERS then
 		characters[player] = ClientRig(player).Model
-		
-		if player == localPlayer then
+
+		if player == Players.LocalPlayer then
+			player.Character = characters[player];
 			(workspace.CurrentCamera :: any).CameraSubject = characters[player]
 		end
+	else
+		characters[player] = player.Character :: any
 	end
 
-	local initialCFrame = CFrame.new()
+	local initialCFrame = CFrame.new(0, 4, 0)
+
 	if characters[player] and characters[player].PrimaryPart then
-		initialCFrame = characters[player].PrimaryPart:GetPivot()
+		initialCFrame = (characters[player] :: any).PrimaryPart:GetPivot()
 	end
 
 	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
@@ -63,42 +81,26 @@ local function playerAdded(player: Player, id: number)
 	}
 	playerRenderTimes[id] = initialRenderTime
 
-	networkedCFrame = MakeNetworkable(initialCFrame)
+	networkedCFrame = Networkables.MakeNetworkable(initialCFrame)
 
 	local character = characters[player]
 
 	if not character then
-		warn("idk man", player)
 		return
 	end
-	
-	local humanoid = character:WaitForChild("Humanoid")
+
+	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
 	humanoid.Died:Connect(function()
 		initializedPlayers[player] = nil
 	end)
 end
 
-Events.ServerReplicateCFrame.On(function(serverData)
-	bufferTracker.RegisterPacket(serverData.timeStamp)
-
-	local cframes = serverData.cframes
-	local snapshotTime = workspace:GetServerTimeNow()
-
-	for id, cframe in cframes do
-		local entry = idMap[id]
-		if not entry then
-			continue
-		end
-		entry.snapshot:PushAt(snapshotTime, cframe)
-	end
-end)
-
 Events.InitializePlayer.On(function(data)
 	local playerInstance = Players[data.player]
 
 	if playerInstance then
-		playerAdded(playerInstance, data.id)
+		PlayerAdded(playerInstance, data.id)
 	end
 end)
 
@@ -107,7 +109,7 @@ Events.InitializeExistingPlayers.On(function(data)
 		local playerInstance = Players[playerData.player]
 
 		if playerInstance then
-			playerAdded(playerInstance, playerData.id)
+			PlayerAdded(playerInstance, playerData.id)
 		end
 	end
 end)
@@ -124,11 +126,10 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 	--tldr, GetBuffer will by minimum return GetServerTimeNow() - latency in a perfect world scenario
 	--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
 	local targetRenderTime = globalServerTime - bufferTracker.GetBuffer()
-
 	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 	for id, data in idMap do
-		if not data.character or not data.character.PrimaryPart or data.character == characters[localPlayer] then
+		if not data.character or not data.character.PrimaryPart or data.character == player.Character then
 			continue
 		end
 
@@ -159,16 +160,16 @@ RunService.Heartbeat:Connect(function()
 	end
 	lastSent = time()
 
-	if characters[localPlayer] and characters[localPlayer].PrimaryPart then
-		local currentCFrame = characters[localPlayer].PrimaryPart:GetPivot()
+	if player.Character and player.Character.PrimaryPart then
+		local currentCFrame = player.Character.PrimaryPart:GetPivot()
 		--if player did not move, don't network the change.
 		local delta = networkedCFrame.Diff(currentCFrame, 0.1)
 
-		if delta == CFrame.new() or vector.magnitude(delta.Position :: any) < 0.1 then
+		if vector.magnitude(delta.Position :: any) < 0.1 then
 			return
 		end
 
 		lastSentCFrame = currentCFrame
-		Events.ClientReplicateCFrame.Fire(currentCFrame)
+		Events.ClientReplicateCFrame.Fire(delta)
 	end
 end)
