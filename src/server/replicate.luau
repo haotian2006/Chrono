@@ -15,7 +15,6 @@ local idMap = {} :: { [number]: {
 	snapshot: Snapshots.SnapshotInstance,
 } }
 local lastReplicatedTimes = {} :: { [number]: number }
-local netCFrameMap = {} :: { [Player]: Networkables.Networkable }
 
 local MAX_ID = 255
 local IncrementalFactoryUID = 0
@@ -77,7 +76,6 @@ Players.PlayerAdded:Connect(function(player: Player)
 		snapshot = Snapshots.RegisterPlayer(player),
 	}
 	lastReplicatedTimes[id] = 0
-	netCFrameMap[player] = Networkables.MakeNetworkable(CFrame.new(0, 4, 0))
 
 	InitExistingPlayers(player)
 
@@ -96,9 +94,8 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-Events.ClientReplicateCFrame.On(function(player, deltaCFrame)
-	local netCFrame = netCFrameMap[player]
-	local newCFrame = netCFrame.Apply(deltaCFrame)
+Events.ClientReplicateCFrame.On(function(player, CFrame)
+	local newCFrame = Networkables.DecodeCFrame(CFrame)
 
 	local id = playerIdMap[player]
 	local data = idMap[id]

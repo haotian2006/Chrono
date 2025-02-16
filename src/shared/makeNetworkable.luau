@@ -3,55 +3,22 @@ type NetworkableCFrame = {
 	Rotation: { x: number, y: number, z: number },
 }
 
-export type Networkable = {
-	Diff: (newCFrame: CFrame, tolerance: number) -> NetworkableCFrame,
-	Apply: (deltaData: NetworkableCFrame) -> CFrame,
-}
-
 return {
-	MakeNetworkable = function(initialCFrame: CFrame): Networkable
-		local current = initialCFrame
+	MakeNetworkable = function(CFrame: CFrame): NetworkableCFrame
+		local position = CFrame.Position
 
-		local function Diff(newCFrame: CFrame, tolerance: number)
-			local deltaCFrame = current:ToObjectSpace(newCFrame)
+		local axis, angle = CFrame:ToAxisAngle()
 
-			local position = deltaCFrame.Position
+		local halfAngle = angle * 0.5
+		local sinHalf = math.sin(halfAngle)
 
-			local axis, angle = deltaCFrame:ToAxisAngle()
-
-			local halfAngle = angle * 0.5
-			local sinHalf = math.sin(halfAngle)
-
-			local x = axis.X * sinHalf
-			local y = axis.Y * sinHalf
-			local z = axis.Z * sinHalf
-
-			current = newCFrame
-
-			return {
-				Position = position,
-				Rotation = { x = x, y = y, z = z },
-			}
-		end
-
-		local function Apply(deltaData: NetworkableCFrame): CFrame
-			local position = deltaData.Position
-			local rotation = deltaData.Rotation
-
-			local x, y, z = rotation.x, rotation.y, rotation.z
-			local wSquared = 1 - x * x - y * y - z * z
-			local w = if wSquared > 0 then math.sqrt(wSquared) else 0
-
-			local deltaCFrame = CFrame.new(position.X, position.Y, position.Z, x, y, z, w)
-
-			current = current * deltaCFrame
-
-			return current
-		end
+		local x = axis.X * sinHalf
+		local y = axis.Y * sinHalf
+		local z = axis.Z * sinHalf
 
 		return {
-			Diff = Diff,
-			Apply = Apply,
+			Position = position,
+			Rotation = { x = x, y = y, z = z },
 		}
 	end,
 	NetworkableCFrameTable = function(cframes: { CFrame })

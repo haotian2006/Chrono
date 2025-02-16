@@ -163,13 +163,13 @@ RunService.Heartbeat:Connect(function()
 	if player.Character and player.Character.PrimaryPart then
 		local currentCFrame = player.Character.PrimaryPart:GetPivot()
 		--if player did not move, don't network the change.
-		local delta = networkedCFrame.Diff(currentCFrame, 0.1)
+		local networkable = Networkables.MakeNetworkable(currentCFrame)
 
-		if vector.magnitude(delta.Position :: any) < 0.1 then
+		if vector.magnitude(networkable.Position :: any) < 0.1 then
 			return
 		end
 
 		lastSentCFrame = currentCFrame
-		Events.ClientReplicateCFrame.Fire(delta)
+		Events.ClientReplicateCFrame.Fire(networkable)
 	end
 end)
