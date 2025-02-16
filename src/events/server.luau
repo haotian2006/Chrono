@@ -150,15 +150,87 @@ local Queue: any = {
 
 Queue.Unreliable[0] = table.create(256)
 local function ReadEVENT_ClientReplicateCFrame(): ({ Position: Vector3, Rotation: { x: number, y: number, z: number } })
-	-- Read BLOCK: 18 bytes
-	local BLOCK_START = Read(18)
+	-- Read BLOCK: 12 bytes
+	local BLOCK_START = Read(12)
 	local Value = {} :: any
-	local X = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
-	local Y = buffer.readf32(RecieveBuffer, BLOCK_START + 4)
-	local Z = buffer.readf32(RecieveBuffer, BLOCK_START + 8)
+	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
+	local X
+	local MantissaExponent = Encoded % 0x8000
+	if MantissaExponent == 0b0_11111_0000000000  then
+		if Encoded // 0x8000 == 1 then
+			X = -math.huge
+		else
+			X = math.huge
+		end
+	elseif MantissaExponent == 0b1_11111_0000000000   then
+		X = 0 / 0
+	elseif MantissaExponent == 0b0_00000_0000000000   then
+		X = 0
+	else
+		local Mantissa = MantissaExponent % 0x400
+		local Exponent = MantissaExponent // 0x400
+		local Fraction;
+		if Exponent == 0 then
+			Fraction = Mantissa / 0x400
+		else
+			Fraction = Mantissa / 0x800 + 0.5
+		end
+		local Result = math.ldexp(Fraction, Exponent - 14)
+		X = if Encoded // 0x8000 == 1 then -Result else Result
+	end
+	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 2)
+	local Y
+	local MantissaExponent = Encoded % 0x8000
+	if MantissaExponent == 0b0_11111_0000000000  then
+		if Encoded // 0x8000 == 1 then
+			Y = -math.huge
+		else
+			Y = math.huge
+		end
+	elseif MantissaExponent == 0b1_11111_0000000000   then
+		Y = 0 / 0
+	elseif MantissaExponent == 0b0_00000_0000000000   then
+		Y = 0
+	else
+		local Mantissa = MantissaExponent % 0x400
+		local Exponent = MantissaExponent // 0x400
+		local Fraction;
+		if Exponent == 0 then
+			Fraction = Mantissa / 0x400
+		else
+			Fraction = Mantissa / 0x800 + 0.5
+		end
+		local Result = math.ldexp(Fraction, Exponent - 14)
+		Y = if Encoded // 0x8000 == 1 then -Result else Result
+	end
+	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 4)
+	local Z
+	local MantissaExponent = Encoded % 0x8000
+	if MantissaExponent == 0b0_11111_0000000000  then
+		if Encoded // 0x8000 == 1 then
+			Z = -math.huge
+		else
+			Z = math.huge
+		end
+	elseif MantissaExponent == 0b1_11111_0000000000   then
+		Z = 0 / 0
+	elseif MantissaExponent == 0b0_00000_0000000000   then
+		Z = 0
+	else
+		local Mantissa = MantissaExponent % 0x400
+		local Exponent = MantissaExponent // 0x400
+		local Fraction;
+		if Exponent == 0 then
+			Fraction = Mantissa / 0x400
+		else
+			Fraction = Mantissa / 0x800 + 0.5
+		end
+		local Result = math.ldexp(Fraction, Exponent - 14)
+		Z = if Encoded // 0x8000 == 1 then -Result else Result
+	end
 	Value.Position = Vector3.new(X, Y, Z)
 	Value.Rotation = {} :: any
-	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 12)
+	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 6)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
@@ -182,7 +254,7 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ Position: Vector3, Rotation
 		local Result = math.ldexp(Fraction, Exponent - 14)
 		Value.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
 	end
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 14)
+	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 8)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
@@ -206,7 +278,7 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ Position: Vector3, Rotation
 		local Result = math.ldexp(Fraction, Exponent - 14)
 		Value.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
 	end
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 16)
+	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 10)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
@@ -244,12 +316,78 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamp: number, cfra
 		local OFFSET_0 = Allocate(1)
 		buffer.writeu8(SendBuffer, OFFSET_0, Key_1)
 		local Vector = Element_1.Position
-		local OFFSET_1 = Allocate(4)
-		buffer.writef32(SendBuffer, OFFSET_1, Vector.X)
-		local OFFSET_2 = Allocate(4)
-		buffer.writef32(SendBuffer, OFFSET_2, Vector.Y)
-		local OFFSET_3 = Allocate(4)
-		buffer.writef32(SendBuffer, OFFSET_3, Vector.Z)
+		local OFFSET_1 = Allocate(2)
+		if Vector.X > 65504 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0b0_11111_0000000000)
+		elseif Vector.X < -65504 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0b1_11111_0000000000)
+		elseif Vector.X ~= Vector.X then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0b1_11111_0000000001)
+		elseif Vector.X == 0 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0)
+		else
+			local float = Vector.X
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, OFFSET_1, Result)
+		end
+		local OFFSET_2 = Allocate(2)
+		if Vector.Y > 65504 then
+			buffer.writeu16(SendBuffer, OFFSET_2, 0b0_11111_0000000000)
+		elseif Vector.Y < -65504 then
+			buffer.writeu16(SendBuffer, OFFSET_2, 0b1_11111_0000000000)
+		elseif Vector.Y ~= Vector.Y then
+			buffer.writeu16(SendBuffer, OFFSET_2, 0b1_11111_0000000001)
+		elseif Vector.Y == 0 then
+			buffer.writeu16(SendBuffer, OFFSET_2, 0)
+		else
+			local float = Vector.Y
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, OFFSET_2, Result)
+		end
+		local OFFSET_3 = Allocate(2)
+		if Vector.Z > 65504 then
+			buffer.writeu16(SendBuffer, OFFSET_3, 0b0_11111_0000000000)
+		elseif Vector.Z < -65504 then
+			buffer.writeu16(SendBuffer, OFFSET_3, 0b1_11111_0000000000)
+		elseif Vector.Z ~= Vector.Z then
+			buffer.writeu16(SendBuffer, OFFSET_3, 0b1_11111_0000000001)
+		elseif Vector.Z == 0 then
+			buffer.writeu16(SendBuffer, OFFSET_3, 0)
+		else
+			local float = Vector.Z
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, OFFSET_3, Result)
+		end
 		local OFFSET_4 = Allocate(2)
 		if Element_1.Rotation.x > 65504 then
 			buffer.writeu16(SendBuffer, OFFSET_4, 0b0_11111_0000000000)
