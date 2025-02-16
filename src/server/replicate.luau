@@ -27,57 +27,6 @@ local function GetNextID(): number
 	return IncrementalFactoryUID
 end
 
-local function OnCharacterAdded(player: Player, character: Model, id: number)
-	if Config.ENABLE_CUSTOM_CHARACTERS then
-		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
-		humanoidRootPart.Anchored = true
-		character.Parent = workspace.CurrentCamera
-	end
-	Grid.AddEntity(character, "player")
-	Events.InitializePlayer.FireAll({
-		id = id,
-		player = player.Name,
-	})
-end
-
-local function OnCharacterRemoving(character: Model)
-	Grid.RemoveEntity(character)
-end
-
-Players.PlayerAdded:Connect(function(player)
-	local id = GetNextID()
-	playerIdMap[player] = id
-	idMap[id] = {
-		player = player,
-		snapshot = Snapshots.RegisterPlayer(player),
-	}
-	lastReplicatedTimes[id] = 0
-
-	player.CharacterAdded:Connect(function(character)
-		OnCharacterAdded(player, character, id)
-	end)
-	player.CharacterRemoving:Connect(OnCharacterRemoving)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-	local id = playerIdMap[player]
-	if id then
-		idMap[id] = nil
-		lastReplicatedTimes[id] = nil
-		playerIdMap[player] = nil
-	end
-end)
-
-Events.ClientReplicateCFrame.On(function(player, cframe)
-	local id = playerIdMap[player]
-	local data = idMap[id]
-	if not data then
-		return
-	end
-
-	data.snapshot:PushAt(workspace:GetServerTimeNow(), cframe)
-end)
-
 local function GetTickInterval(character: Model): number
 	local baseTick = Config.TICK_RATE
 	if not character then
@@ -93,7 +42,87 @@ local function GetTickInterval(character: Model): number
 	end
 end
 
-RunService.Heartbeat:Connect(function(deltaTime)
+local function OnCharacterAdded(player: Player, character: Model, id: number)
+	if Config.ENABLE_CUSTOM_CHARACTERS then
+		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
+		humanoidRootPart.Anchored = true
+		character.Parent = workspace.CurrentCamera
+	end
+
+	Grid.AddEntity(character, "player")
+
+	Events.InitializePlayer.FireAll({
+		id = id,
+		player = player.Name,
+	})
+end
+
+local function OnCharacterRemoving(character: Model)
+	Grid.RemoveEntity(character)
+end
+
+local function initExistingPlayers(player: Player)
+	local playerData = {}
+
+	for existingPlayer, _ in playerIdMap do
+		if existingPlayer == player then
+			continue
+		end
+
+		table.insert(playerData, {
+			id = playerIdMap[existingPlayer],
+			player = existingPlayer.Name,
+		})
+	end
+
+	if #playerData == 0 then
+		warn("No existing players found to initialize for player", player)
+		return
+	end
+
+	Events.InitializeExistingPlayers.Fire(player, playerData)
+end
+
+local function PlayerAdded(player: Player)
+	local id = GetNextID()
+	playerIdMap[player] = id
+	
+	idMap[id] = {
+		player = player,
+		snapshot = Snapshots.RegisterPlayer(player),
+	}
+	lastReplicatedTimes[id] = 0
+
+	initExistingPlayers(player)
+
+	player.CharacterAdded:Connect(function(character)
+		OnCharacterAdded(player, character, id)
+	end)
+	
+	player.CharacterRemoving:Connect(OnCharacterRemoving)
+end
+
+local function PlayerRemoving(player: Player)
+	local id = playerIdMap[player]
+
+	if id then
+		idMap[id] = nil
+		lastReplicatedTimes[id] = nil
+		playerIdMap[player] = nil
+	end
+end
+
+Events.ClientReplicateCFrame.On(function(player, cframe)
+	local id = playerIdMap[player]
+	local data = idMap[id]
+	if not data then
+		return
+	end
+
+	data.snapshot:PushAt(workspace:GetServerTimeNow(), cframe)
+end)
+
+RunService.Heartbeat:Connect(function()
 	local currentTime = workspace:GetServerTimeNow()
 	Grid.UpdateGrid()
 
@@ -125,5 +154,8 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		})
 	end
 end)
+
+Players.PlayerAdded:Connect(PlayerAdded)
+Players.PlayerRemoving:Connect(PlayerRemoving)
 
 return nil

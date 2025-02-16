@@ -21,9 +21,19 @@ event ServerReplicateCFrame {
 event InitializePlayer {
     from: Server,
     type: Reliable,
-    call: SingleSync,
+    call: ManyAsync,
     data: struct {
         id: u8,
         player: string,
     }
+}
+
+event InitializeExistingPlayers {
+    from: Server,
+    type: Reliable,
+    call: ManyAsync,
+    data: struct {
+        id: u8,
+        player: string,
+    }[]
 }

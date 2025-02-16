@@ -16,13 +16,63 @@ local idMap = {} :: {
 	},
 }
 
-local player = Players.LocalPlayer
+local localPlayer = Players.LocalPlayer
 
 local lerp = (math :: any).lerp
-
 local playerRenderTimes = {} :: { [number]: number }
+local initializedPlayers = {} :: { [Player]: boolean }
+local characters = {} :: { [Player]: Model }
 
 local bufferTracker = InterpolationBuffer(Config.TICK_RATE, Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
+
+local function playerAdded(player: Player, id: number)
+	if initializedPlayers[player] then
+		warn("Player already initialized", player)
+		return
+	end
+
+	initializedPlayers[player] = true
+
+	local registeredSnapshots = Snapshots.RegisterPlayer(player)
+
+	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
+
+	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
+	if Config.ENABLE_CUSTOM_CHARACTERS then
+		characters[player] = ClientRig(player).Model
+		
+		if player == localPlayer then
+			(workspace.CurrentCamera :: any).CameraSubject = characters[player]
+		end
+	end
+
+	local initialCFrame = CFrame.new()
+	if characters[player] and characters[player].PrimaryPart then
+		initialCFrame = characters[player].PrimaryPart:GetPivot()
+	end
+
+	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
+
+	idMap[id] = {
+		snapshot = registeredSnapshots,
+		character = characters[player],
+		lastCFrame = initialCFrame,
+	}
+	playerRenderTimes[id] = initialRenderTime
+
+	local character = characters[player]
+
+	if not character then
+		warn("idk man", player)
+		return
+	end
+	
+	local humanoid = character:WaitForChild("Humanoid")
+
+	humanoid.Died:Connect(function()
+		initializedPlayers[player] = nil
+	end)
+end
 
 Events.ServerReplicateCFrame.On(function(serverData)
 	bufferTracker.RegisterPacket(serverData.timeStamp)
@@ -39,37 +89,22 @@ Events.ServerReplicateCFrame.On(function(serverData)
 	end
 end)
 
-Events.InitializePlayer.On(function(serverData)
-	local id = serverData.id
-	local playerInstance = Players[serverData.player]
+Events.InitializePlayer.On(function(data)
+	local playerInstance = Players[data.player]
 
-	local registeredSnapshots = Snapshots.RegisterPlayer(playerInstance)
+	if playerInstance then
+		playerAdded(playerInstance, data.id)
+	end
+end)
 
-	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
+Events.InitializeExistingPlayers.On(function(data)
+	for _, playerData in data do
+		local playerInstance = Players[playerData.player]
 
-	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
-	if Config.ENABLE_CUSTOM_CHARACTERS then
-		if player == playerInstance then
-			playerInstance.Character = ClientRig(playerInstance).Model
-			workspace.CurrentCamera.CameraSubject = playerInstance.Character
-		else
-			playerInstance.Character = ClientRig(playerInstance).Model
+		if playerInstance then
+			playerAdded(playerInstance, playerData.id)
 		end
 	end
-
-	local initialCFrame = CFrame.new()
-	if playerInstance.Character and playerInstance.Character.PrimaryPart then
-		initialCFrame = playerInstance.Character.PrimaryPart:GetPivot()
-	end
-
-	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
-
-	idMap[id] = {
-		snapshot = registeredSnapshots,
-		character = playerInstance.Character,
-		lastCFrame = initialCFrame,
-	}
-	playerRenderTimes[id] = initialRenderTime
 end)
 
 local lastSent = time()
@@ -88,7 +123,7 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 	for id, data in idMap do
-		if not data.character or not data.character.PrimaryPart or data.character == player.Character then
+		if not data.character or not data.character.PrimaryPart or data.character == characters[localPlayer] then
 			continue
 		end
 
@@ -119,8 +154,8 @@ RunService.Heartbeat:Connect(function()
 	end
 	lastSent = time()
 
-	if player.Character and player.Character.PrimaryPart then
-		local currentCFrame = player.Character.PrimaryPart:GetPivot()
+	if characters[localPlayer] and characters[localPlayer].PrimaryPart then
+		local currentCFrame = characters[localPlayer].PrimaryPart:GetPivot()
 		--if player did not move, don't network the change.
 		if lastSentCFrame:FuzzyEq(currentCFrame, 0.1) then
 			return
