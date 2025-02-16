@@ -108,20 +108,6 @@ Events.InitializeExistingPlayers.On(function(data)
 			playerAdded(playerInstance, playerData.id)
 		end
 	end
-
-	local initialCFrame = CFrame.new()
-	if playerInstance.Character and playerInstance.Character.PrimaryPart then
-		initialCFrame = playerInstance.Character.PrimaryPart:GetPivot()
-	end
-
-	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
-
-	idMap[id] = {
-		snapshot = registeredSnapshots,
-		character = playerInstance.Character,
-		lastCFrame = initialCFrame,
-	}
-	playerRenderTimes[id] = initialRenderTime
 end)
 
 local lastSent = time()
