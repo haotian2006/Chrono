@@ -1,15 +1,11 @@
+type NetworkableCFrame = {
+	Position: Vector3,
+	Rotation: { x: number, y: number, z: number },
+}
+
 export type Networkable = {
-	Diff: (
-		newCFrame: CFrame,
-		tolerance: number
-	) -> {
-		Position: Vector3,
-		Rotation: { x: number, y: number, z: number },
-	},
-	Apply: (deltaData: {
-		Position: Vector3,
-		Rotation: { x: number, y: number, z: number },
-	}) -> CFrame,
+	Diff: (newCFrame: CFrame, tolerance: number) -> NetworkableCFrame,
+	Apply: (deltaData: NetworkableCFrame) -> CFrame,
 }
 
 return {
@@ -38,10 +34,7 @@ return {
 			}
 		end
 
-		local function Apply(deltaData: {
-			Position: Vector3,
-			Rotation: { x: number, y: number, z: number },
-		}): CFrame
+		local function Apply(deltaData: NetworkableCFrame): CFrame
 			local position = deltaData.Position
 			local rotation = deltaData.Rotation
 
@@ -80,7 +73,7 @@ return {
 		end
 		return results
 	end,
-	DecodeCFrame = function(data: { Position: Vector3, Rotation: { x: number, y: number, z: number } }): CFrame
+	DecodeCFrame = function(data: NetworkableCFrame): CFrame
 		local position = data.Position
 		local rotation = data.Rotation
 
