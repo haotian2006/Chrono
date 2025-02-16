@@ -61,7 +61,7 @@ return {
 			Apply = Apply,
 		}
 	end,
-	NetworkableCFrameTable = function(cframes)
+	NetworkableCFrameTable = function(cframes: { CFrame })
 		local results = {}
 		for index, cframe in cframes do
 			local position = cframe.Position
