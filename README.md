@@ -14,7 +14,6 @@ Features:
 * Buffer based networking - Packs data into buffers to lower bandwidth even at higher tick rates.
 * Disabled roblox replication - Fully disable roblox character replication to lower bandwidth and use custom replication to its full capacity. 
 * Custom characters - By parenting the character to the camera on the server and creating a simulated rig on the client, my system allows for a custom character controller - server authoritative movement and custom physics / collissions. This feature is still in the works.
-* Network delta - Only send changes in the cframe and applying it later - also opens doors to further compression by part in the future. 
 * Full configurability - toggle whether you want to disable roblox replication, have custom characters and more. Edit any settings, magic numbers, smoothing factors, thresholds etc. Fully documented functionalities for easy code editing.
 
 Upcoming:

@@ -7,7 +7,6 @@ local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
-local MakeNetworkable = require(ReplicatedStorage.Shared.makeNetworkable)
 
 local idMap = {} :: {
 	[number]: {
@@ -25,8 +24,6 @@ local initializedPlayers = {} :: { [Player]: boolean }
 local characters = {} :: { [Player]: Model }
 
 local bufferTracker = InterpolationBuffer(Config.TICK_RATE, Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
-
-local networkedCFrame = nil
 
 local function playerAdded(player: Player, id: number)
 	if initializedPlayers[player] then
@@ -160,9 +157,7 @@ RunService.Heartbeat:Connect(function()
 	if characters[localPlayer] and characters[localPlayer].PrimaryPart then
 		local currentCFrame = characters[localPlayer].PrimaryPart:GetPivot()
 		--if player did not move, don't network the change.
-		local delta = networkedCFrame.Diff(currentCFrame, 0.1)
-
-		if delta == CFrame.new() or vector.magnitude(delta.Position :: any) < 0.1 then
+		if lastSentCFrame:FuzzyEq(currentCFrame, 0.1) then
 			return
 		end
 
