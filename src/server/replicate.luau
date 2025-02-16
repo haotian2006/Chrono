@@ -94,8 +94,8 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-Events.ClientReplicateCFrame.On(function(player, CFrame)
-	local newCFrame = Networkables.DecodeCFrame(CFrame)
+Events.ClientReplicateCFrame.On(function(player, cframe)
+	local newCFrame = Networkables.DecodeCFrame(cframe)
 
 	local id = playerIdMap[player]
 	local data = idMap[id]
