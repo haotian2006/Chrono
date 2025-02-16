@@ -148,6 +148,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
 
 	if next(cframes) then
 		Events.ServerReplicateCFrame.FireAll({
+			--using helper function that converts an entire table of cframes to networkable form
 			cframes = Networkables.NetworkableCFrameTable(cframes),
 			timeStamp = workspace:GetServerTimeNow(),
 		})

@@ -6,7 +6,8 @@ type NetworkableCFrame = {
 return {
 	MakeNetworkable = function(CFrame: CFrame): NetworkableCFrame
 		local position = CFrame.Position
-
+		--AxisAngles very simple way to think about quaternions
+		--can convert into quaternions by multiplying sine of the half angle
 		local axis, angle = CFrame:ToAxisAngle()
 
 		local halfAngle = angle * 0.5

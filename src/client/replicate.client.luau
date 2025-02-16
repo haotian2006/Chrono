@@ -38,6 +38,8 @@ Events.ServerReplicateCFrame.On(function(serverData)
 		if not entry then
 			continue
 		end
+		--since CFrames are received in the networkable format, I have to decode it to be actual cframes. It is nicely done because of the roblox cframe.new overload for quaternions.
+		--same applies on the server as well of course.
 		entry.snapshot:PushAt(snapshotTime, Networkables.DecodeCFrame(cframe))
 	end
 end)
@@ -163,6 +165,8 @@ RunService.Heartbeat:Connect(function()
 	if player.Character and player.Character.PrimaryPart then
 		local currentCFrame = player.Character.PrimaryPart:GetPivot()
 		--if player did not move, don't network the change.
+		--CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
+		--this allows for much nicer compression since I am using quaternions
 		local networkable = Networkables.MakeNetworkable(currentCFrame)
 
 		if vector.magnitude(networkable.Position :: any) < 0.1 then
