@@ -148,10 +148,11 @@ local Queue: any = {
 }
 
 Queue.Unreliable[1] = table.create(256)
-Events.Reliable[0] = {}
 Queue.Reliable[0] = table.create(256)
 Events.Reliable[1] = {}
 Queue.Reliable[1] = table.create(256)
+Events.Reliable[2] = {}
+Queue.Reliable[2] = table.create(256)
 local function WriteEVENT_ClientReplicateCFrame(Value: { timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }): ()
 	-- Allocate BLOCK: 21 bytes
 	local BLOCK_START = Allocate(21)
@@ -477,6 +478,38 @@ local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamps: {[number]: numb
 	return Value
 end
 
+local function ReadEVENT_TickRateChanged(): ({ id: number, tickRate: number })
+	-- Read BLOCK: 3 bytes
+	local BLOCK_START = Read(3)
+	local Value = {} :: any
+	Value.id = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
+	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 1)
+	local MantissaExponent = Encoded % 0x8000
+	if MantissaExponent == 0b0_11111_0000000000  then
+		if Encoded // 0x8000 == 1 then
+			Value.tickRate = -math.huge
+		else
+			Value.tickRate = math.huge
+		end
+	elseif MantissaExponent == 0b1_11111_0000000000   then
+		Value.tickRate = 0 / 0
+	elseif MantissaExponent == 0b0_00000_0000000000   then
+		Value.tickRate = 0
+	else
+		local Mantissa = MantissaExponent % 0x400
+		local Exponent = MantissaExponent // 0x400
+		local Fraction;
+		if Exponent == 0 then
+			Fraction = Mantissa / 0x400
+		else
+			Fraction = Mantissa / 0x800 + 0.5
+		end
+		local Result = math.ldexp(Fraction, Exponent - 14)
+		Value.tickRate = if Encoded // 0x8000 == 1 then -Result else Result
+	end
+	return Value
+end
+
 local function ReadEVENT_InitializePlayer(): ({ id: number, player: string })
 	-- Read BLOCK: 3 bytes
 	local BLOCK_START = Read(3)
@@ -521,6 +554,9 @@ if not RunService:IsRunning() then
 		Fire = NOOP
 	},
 	ServerReplicateCFrame = {
+		On = NOOP
+	},
+	TickRateChanged = {
 		On = NOOP
 	},
 	InitializePlayer = {
@@ -574,28 +610,38 @@ Reliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 0 then
-			local Value: { id: number, player: string } = ReadEVENT_InitializePlayer()
-			if #Events.Reliable[0] > 0 then
-				for _, Listener in Events.Reliable[0] do
-					task.spawn(Listener, Value)
-				end
+			local Value: { id: number, tickRate: number } = ReadEVENT_TickRateChanged()
+			if Events.Reliable[0] ~= nil then
+				Events.Reliable[0](Value)
 			else
 				if #Queue.Reliable[0] > 256 then
-					warn("[Blink]: Event queue of \"InitializePlayer\" exceeded 256, did you forget to implement a listener?")
+					warn("[Blink]: Event queue of \"TickRateChanged\" exceeded 256, did you forget to implement a listener?")
 				end
 				table.insert(Queue.Reliable[0], {Value} :: {any})
 			end
 		elseif Index == 1 then
-			local Value: { { id: number, player: string } } = ReadEVENT_InitializeExistingPlayers()
+			local Value: { id: number, player: string } = ReadEVENT_InitializePlayer()
 			if #Events.Reliable[1] > 0 then
 				for _, Listener in Events.Reliable[1] do
 					task.spawn(Listener, Value)
 				end
 			else
 				if #Queue.Reliable[1] > 256 then
-					warn("[Blink]: Event queue of \"InitializeExistingPlayers\" exceeded 256, did you forget to implement a listener?")
+					warn("[Blink]: Event queue of \"InitializePlayer\" exceeded 256, did you forget to implement a listener?")
 				end
 				table.insert(Queue.Reliable[1], {Value} :: {any})
+			end
+		elseif Index == 2 then
+			local Value: { { id: number, player: string } } = ReadEVENT_InitializeExistingPlayers()
+			if #Events.Reliable[2] > 0 then
+				for _, Listener in Events.Reliable[2] do
+					task.spawn(Listener, Value)
+				end
+			else
+				if #Queue.Reliable[2] > 256 then
+					warn("[Blink]: Event queue of \"InitializeExistingPlayers\" exceeded 256, did you forget to implement a listener?")
+				end
+				table.insert(Queue.Reliable[2], {Value} :: {any})
 			end
 		end
 	end
@@ -642,20 +688,20 @@ local Returns = table.freeze({
 			end
 		end
 	},
-	InitializePlayer = {
-		On = function(Listener: (Value: { id: number, player: string }) -> ()): () -> ()
-			table.insert(Events.Reliable[0], Listener)
+	TickRateChanged = {
+		On = function(Listener: (Value: { id: number, tickRate: number }) -> ()): () -> ()
+			Events.Reliable[0] = Listener
 			for Index, Arguments in Queue.Reliable[0] do
-				task.spawn(Listener, table.unpack(Arguments))
+				Listener(table.unpack(Arguments))
 			end
 			Queue.Reliable[0] = {}
 			return function (): ()
-				table.remove(Events.Reliable[0], table.find(Events.Reliable[0], Listener))
+				Events.Reliable[0] = nil
 			end
 		end
 	},
-	InitializeExistingPlayers = {
-		On = function(Listener: (Value: { { id: number, player: string } }) -> ()): () -> ()
+	InitializePlayer = {
+		On = function(Listener: (Value: { id: number, player: string }) -> ()): () -> ()
 			table.insert(Events.Reliable[1], Listener)
 			for Index, Arguments in Queue.Reliable[1] do
 				task.spawn(Listener, table.unpack(Arguments))
@@ -663,6 +709,18 @@ local Returns = table.freeze({
 			Queue.Reliable[1] = {}
 			return function (): ()
 				table.remove(Events.Reliable[1], table.find(Events.Reliable[1], Listener))
+			end
+		end
+	},
+	InitializeExistingPlayers = {
+		On = function(Listener: (Value: { { id: number, player: string } }) -> ()): () -> ()
+			table.insert(Events.Reliable[2], Listener)
+			for Index, Arguments in Queue.Reliable[2] do
+				task.spawn(Listener, table.unpack(Arguments))
+			end
+			Queue.Reliable[2] = {}
+			return function (): ()
+				table.remove(Events.Reliable[2], table.find(Events.Reliable[2], Listener))
 			end
 		end
 	},

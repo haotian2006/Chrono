@@ -21,11 +21,17 @@ local player = Players.LocalPlayer
 local lerp = (math :: any).lerp
 local initializedPlayers = {} :: { [Player]: boolean }
 local characters = {} :: { [Player]: Model }
+local playerTickRates = {} :: { [number]: number }
 
 local playerRenderTimes = {} :: { [number]: number }
-local bufferTracker = InterpolationBuffer(Config.TICK_RATE, Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
+local bufferTracker = InterpolationBuffer(Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
 
 local networkedCFrame = nil
+local playerNetworkId = 300
+
+Events.TickRateChanged.On(function(data)
+	playerTickRates[data.id] = data.tickRate
+end)
 
 Events.ServerReplicateCFrame.On(function(serverData)
 	local clientLastTicks = serverData.timeStamps
@@ -53,11 +59,16 @@ local function PlayerAdded(player: Player, id: number)
 		return
 	end
 
+	if player == Players.LocalPlayer then
+		playerNetworkId = id
+	end
+
 	initializedPlayers[player] = true
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(player)
 
-	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer(id)
+	local initialRenderTime = workspace:GetServerTimeNow()
+		- bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
 	if Config.ENABLE_CUSTOM_CHARACTERS then
@@ -137,7 +148,7 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		--tldr, GetBuffer will by minimum return GetServerTimeNow() - latency in a perfect world scenario
 		--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
 
-		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id)
+		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 		local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 		--get the entity snapshot at the new render time - a smoothly interpolated value between the current and target render time.
@@ -162,7 +173,7 @@ RunService.PreRender:Connect(function(deltaTime: number)
 end)
 
 RunService.PostSimulation:Connect(function()
-	if time() - lastSent < Config.TICK_RATE then
+	if time() - lastSent < playerTickRates[playerNetworkId] or Config.TICK_RATE then
 		return
 	end
 	lastSent = time()

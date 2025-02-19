@@ -474,10 +474,40 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: 
 	buffer.writeu16(SendBuffer, BLOCK_START + 3, Elements_1)
 end
 
-local function WriteEVENT_InitializePlayer(Value: { id: number, player: string }): ()
+local function WriteEVENT_TickRateChanged(Value: { id: number, tickRate: number }): ()
 	-- Allocate BLOCK: 4 bytes
 	local BLOCK_START = Allocate(4)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 0)
+	buffer.writeu8(SendBuffer, BLOCK_START + 1, Value.id)
+	if Value.tickRate > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 2, 0b0_11111_0000000000)
+	elseif Value.tickRate < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 2, 0b1_11111_0000000000)
+	elseif Value.tickRate ~= Value.tickRate then
+		buffer.writeu16(SendBuffer, BLOCK_START + 2, 0b1_11111_0000000001)
+	elseif Value.tickRate == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 2, 0)
+	else
+		local float = Value.tickRate
+		local Abosulte = math.abs(float)
+		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+		local RoundedValue = (Abosulte // Interval) * Interval
+		local Fraction, Exponent = math.frexp(RoundedValue)
+		Exponent += 14
+		local Mantissa = math.round(if Exponent <= 0
+			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+			else Fraction * 0x800) % 0x400
+		local Result = Mantissa
+			+ math.max(Exponent, 0) * 0x400
+			+ if float < 0 then 0x8000 else 0
+		buffer.writeu16(SendBuffer, BLOCK_START + 2, Result)
+	end
+end
+
+local function WriteEVENT_InitializePlayer(Value: { id: number, player: string }): ()
+	-- Allocate BLOCK: 4 bytes
+	local BLOCK_START = Allocate(4)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
 	buffer.writeu8(SendBuffer, BLOCK_START + 1, Value.id)
 	local Length = #Value.player
 	buffer.writeu16(SendBuffer, BLOCK_START + 2, Length)
@@ -488,7 +518,7 @@ end
 local function WriteEVENT_InitializeExistingPlayers(Value: { { id: number, player: string } }): ()
 	-- Allocate BLOCK: 3 bytes
 	local BLOCK_START = Allocate(3)
-	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 2)
 	-- START ARRAY
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, #Value)
 		-- Allocate BLOCK: 3 bytes
@@ -517,6 +547,12 @@ if not RunService:IsRunning() then
 		On = NOOP
 	},
 	ServerReplicateCFrame = {
+		Fire = NOOP,
+		FireAll = NOOP,
+		FireList = NOOP,
+		FireExcept = NOOP
+	},
+	TickRateChanged = {
 		Fire = NOOP,
 		FireAll = NOOP,
 		FireList = NOOP,
@@ -658,6 +694,52 @@ local Returns = table.freeze({
 					continue
 				end
 				Unreliable:FireClient(Player, Buffer, SendInstances)
+			end
+		end,
+	},
+	TickRateChanged = {
+		Fire = function(Player: Player, Value: { id: number, tickRate: number }): ()
+			Load(PlayersMap[Player])
+			WriteEVENT_TickRateChanged(Value)
+			PlayersMap[Player] = Save()
+		end,
+		FireAll = function(Value: { id: number, tickRate: number }): ()
+			Load()
+			WriteEVENT_TickRateChanged(Value)
+			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+			for _, Player in Players:GetPlayers() do
+				Load(PlayersMap[Player])
+				local Position = Allocate(Size)
+				buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+				table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+				PlayersMap[Player] = Save()
+			end
+		end,
+		FireList = function(List: {Player}, Value: { id: number, tickRate: number }): ()
+			Load()
+			WriteEVENT_TickRateChanged(Value)
+			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+			for _, Player in List do
+				Load(PlayersMap[Player])
+				local Position = Allocate(Size)
+				buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+				table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+				PlayersMap[Player] = Save()
+			end
+		end,
+		FireExcept = function(Except: Player, Value: { id: number, tickRate: number }): ()
+			Load()
+			WriteEVENT_TickRateChanged(Value)
+			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+			for _, Player in Players:GetPlayers() do
+				if Player == Except then
+					continue
+				end
+				Load(PlayersMap[Player])
+				local Position = Allocate(Size)
+				buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+				table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+				PlayersMap[Player] = Save()
 			end
 		end,
 	},

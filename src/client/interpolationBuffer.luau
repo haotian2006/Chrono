@@ -1,4 +1,4 @@
-return function(tickRate: number, minBuffer: number, maxBuffer: number, alpha: number)
+return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }
 	local fix = 0.1
@@ -25,7 +25,7 @@ return function(tickRate: number, minBuffer: number, maxBuffer: number, alpha: n
 		data.lastLatency = latency
 	end
 
-	local function GetBuffer(networkId: number)
+	local function GetBuffer(networkId: number, tickRate: number)
 		--calculate the interpolation buffer that accounts for expected latency, possible deviations and recovery from delays
 		--the buffer will be per player
 		local data = playerLatencies[networkId]

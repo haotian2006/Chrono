@@ -109,7 +109,14 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 	data.snapshot:PushAt(clientData.timeStamp, newCFrame)
 end)
 
-local function GetTickInterval(character: Model): number
+local function UpdateTick(id: number, tickRate: number)
+	Events.TickRateChanged.FireAll({
+		id = id,
+		tickRate = tickRate,
+	})
+end
+
+local function GetTickInterval(character: Model, id: number): number
 	local baseTick = Config.TICK_RATE
 	if not character then
 		return baseTick
@@ -117,11 +124,13 @@ local function GetTickInterval(character: Model): number
 
 	local nearbyPlayers = Grid.GetNearbyEntities(character, Config.PROXIMITY, { "player" })
 
-	if #nearbyPlayers > 1 then
-		return baseTick
-	else
-		return baseTick * 2
+	local newTickRate = if #nearbyPlayers > 1 then baseTick else baseTick * 2
+
+	if lastReplicatedTimes[id] ~= newTickRate then
+		UpdateTick(id, newTickRate)
 	end
+
+	return newTickRate
 end
 
 RunService.PostSimulation:Connect(function(deltaTime)
@@ -136,7 +145,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		if not character then
 			continue
 		end
-		local tickInterval = GetTickInterval(character)
+		local tickInterval = GetTickInterval(character, id)
 		if currentTime - lastReplicatedTimes[id] < tickInterval then
 			continue
 		end

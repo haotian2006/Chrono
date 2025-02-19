@@ -35,6 +35,16 @@ event ServerReplicateCFrame {
     }
 }
 
+event TickRateChanged {
+    from: Server,
+    type: Reliable,
+    call: SingleSync,
+    data: struct {
+        id: u8,
+        tickRate: f16,
+    }
+}
+
 event InitializePlayer {
     from: Server,
     type: Reliable,
