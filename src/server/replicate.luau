@@ -13,6 +13,7 @@ local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: { [number]: {
 	player: Player,
 	snapshot: Snapshots.SnapshotInstance,
+	clientLastTick: number?,
 } }
 local lastReplicatedTimes = {} :: { [number]: number }
 
@@ -74,6 +75,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 	idMap[id] = {
 		player = player,
 		snapshot = Snapshots.RegisterPlayer(player),
+		clientLastTick = nil,
 	}
 	lastReplicatedTimes[id] = 0
 
@@ -94,8 +96,8 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-Events.ClientReplicateCFrame.On(function(player, cframe)
-	local newCFrame = Networkables.DecodeCFrame(cframe)
+Events.ClientReplicateCFrame.On(function(player, clientData)
+	local newCFrame = Networkables.DecodeCFrame(clientData.cframe)
 
 	local id = playerIdMap[player]
 	local data = idMap[id]
@@ -126,6 +128,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	Grid.UpdateGrid()
 
 	local cframes = {}
+	local lastTicks = {}
 
 	for id, data in idMap do
 		local character = data.player.Character
@@ -144,13 +147,15 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		else
 			cframes[id] = character:GetPivot()
 		end
+
+		lastTicks[id] = idMap[id].clientLastTick or workspace:GetServerTimeNow()
 	end
 
 	if next(cframes) then
 		Events.ServerReplicateCFrame.FireAll({
 			--using helper function that converts an entire table of cframes to networkable form
 			cframes = Networkables.NetworkableCFrameTable(cframes),
-			timeStamp = workspace:GetServerTimeNow(),
+			timeStamps = lastTicks,
 		})
 	end
 end)

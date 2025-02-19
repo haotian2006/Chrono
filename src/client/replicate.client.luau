@@ -28,7 +28,10 @@ local bufferTracker = InterpolationBuffer(Config.TICK_RATE, Config.MIN_BUFFER, C
 local networkedCFrame = nil
 
 Events.ServerReplicateCFrame.On(function(serverData)
-	bufferTracker.RegisterPacket(serverData.timeStamp)
+	local clientLastTicks = serverData.timeStamps
+	for id, serverTime in clientLastTicks do
+		bufferTracker.RegisterPacket(id, serverTime)
+	end
 
 	local cframes = serverData.cframes
 	local snapshotTime = workspace:GetServerTimeNow()
@@ -54,7 +57,7 @@ local function PlayerAdded(player: Player, id: number)
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(player)
 
-	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer()
+	local initialRenderTime = workspace:GetServerTimeNow() - bufferTracker.GetBuffer(id)
 
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
 	if Config.ENABLE_CUSTOM_CHARACTERS then
@@ -123,17 +126,19 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 	--GetServerTimeNow() is really nice, because it accounts for the RTT and can serve as the game world's timestamp.
 	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
 	local globalServerTime = workspace:GetServerTimeNow()
-	--GetBuffer returns the interpolation buffer, which is the length of the buffer + your latency. The latency is the remote latency, but the buffer time itself accounts for the varying latency, packet loss, delayed packets - and smooths it out.
-	--snapshot timestamps are attached by the server, and the interpolation actually needs to start it from where the client receives it
-	--tldr, GetBuffer will by minimum return GetServerTimeNow() - latency in a perfect world scenario
-	--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
-	local targetRenderTime = globalServerTime - bufferTracker.GetBuffer()
-	local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 	for id, data in idMap do
 		if not data.character or not data.character.PrimaryPart or data.character == player.Character then
 			continue
 		end
+
+		--GetBuffer returns the interpolation buffer, which is the length of the buffer + your latency. The latency is the remote latency, but the buffer time itself accounts for the varying latency, packet loss, delayed packets - and smooths it out.
+		--snapshot timestamps are attached by the server, and the interpolation actually needs to start it from where the client receives it
+		--tldr, GetBuffer will by minimum return GetServerTimeNow() - latency in a perfect world scenario
+		--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
+
+		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id)
+		local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
 
 		--get the entity snapshot at the new render time - a smoothly interpolated value between the current and target render time.
 		--warning: having a too high lerp factor may increase the "interpolation buffer" - experiment with lower values / directly setting the render time.
@@ -174,6 +179,9 @@ RunService.Heartbeat:Connect(function()
 		end
 
 		lastSentCFrame = currentCFrame
-		Events.ClientReplicateCFrame.Fire(networkable)
+		Events.ClientReplicateCFrame.Fire({
+			timeStamp = workspace:GetServerTimeNow(),
+			cframe = networkable,
+		})
 	end
 end)

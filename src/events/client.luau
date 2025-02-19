@@ -152,19 +152,20 @@ Events.Reliable[0] = {}
 Queue.Reliable[0] = table.create(256)
 Events.Reliable[1] = {}
 Queue.Reliable[1] = table.create(256)
-local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rotation: { x: number, y: number, z: number } }): ()
-	-- Allocate BLOCK: 13 bytes
-	local BLOCK_START = Allocate(13)
+local function WriteEVENT_ClientReplicateCFrame(Value: { timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }): ()
+	-- Allocate BLOCK: 21 bytes
+	local BLOCK_START = Allocate(21)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 0)
-	local Vector = Value.Position
+	buffer.writef64(SendBuffer, BLOCK_START + 1, Value.timeStamp)
+	local Vector = Value.cframe.Position
 	if Vector.X > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 1, 0b0_11111_0000000000)
+		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b0_11111_0000000000)
 	elseif Vector.X < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 1, 0b1_11111_0000000000)
+		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b1_11111_0000000000)
 	elseif Vector.X ~= Vector.X then
-		buffer.writeu16(SendBuffer, BLOCK_START + 1, 0b1_11111_0000000001)
+		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b1_11111_0000000001)
 	elseif Vector.X == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 1, 0)
+		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0)
 	else
 		local float = Vector.X
 		local Abosulte = math.abs(float)
@@ -178,16 +179,16 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rota
 		local Result = Mantissa
 			+ math.max(Exponent, 0) * 0x400
 			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 1, Result)
+		buffer.writeu16(SendBuffer, BLOCK_START + 9, Result)
 	end
 	if Vector.Y > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 3, 0b0_11111_0000000000)
+		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b0_11111_0000000000)
 	elseif Vector.Y < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 3, 0b1_11111_0000000000)
+		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b1_11111_0000000000)
 	elseif Vector.Y ~= Vector.Y then
-		buffer.writeu16(SendBuffer, BLOCK_START + 3, 0b1_11111_0000000001)
+		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b1_11111_0000000001)
 	elseif Vector.Y == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 3, 0)
+		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0)
 	else
 		local float = Vector.Y
 		local Abosulte = math.abs(float)
@@ -201,16 +202,16 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rota
 		local Result = Mantissa
 			+ math.max(Exponent, 0) * 0x400
 			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 3, Result)
+		buffer.writeu16(SendBuffer, BLOCK_START + 11, Result)
 	end
 	if Vector.Z > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0b0_11111_0000000000)
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b0_11111_0000000000)
 	elseif Vector.Z < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0b1_11111_0000000000)
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b1_11111_0000000000)
 	elseif Vector.Z ~= Vector.Z then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0b1_11111_0000000001)
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b1_11111_0000000001)
 	elseif Vector.Z == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0)
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0)
 	else
 		local float = Vector.Z
 		local Abosulte = math.abs(float)
@@ -224,18 +225,18 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rota
 		local Result = Mantissa
 			+ math.max(Exponent, 0) * 0x400
 			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, Result)
+		buffer.writeu16(SendBuffer, BLOCK_START + 13, Result)
 	end
-	if Value.Rotation.x > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0b0_11111_0000000000)
-	elseif Value.Rotation.x < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0b1_11111_0000000000)
-	elseif Value.Rotation.x ~= Value.Rotation.x then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0b1_11111_0000000001)
-	elseif Value.Rotation.x == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0)
+	if Value.cframe.Rotation.x > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b0_11111_0000000000)
+	elseif Value.cframe.Rotation.x < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b1_11111_0000000000)
+	elseif Value.cframe.Rotation.x ~= Value.cframe.Rotation.x then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b1_11111_0000000001)
+	elseif Value.cframe.Rotation.x == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0)
 	else
-		local float = Value.Rotation.x
+		local float = Value.cframe.Rotation.x
 		local Abosulte = math.abs(float)
 		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
 		local RoundedValue = (Abosulte // Interval) * Interval
@@ -247,18 +248,18 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rota
 		local Result = Mantissa
 			+ math.max(Exponent, 0) * 0x400
 			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, Result)
+		buffer.writeu16(SendBuffer, BLOCK_START + 15, Result)
 	end
-	if Value.Rotation.y > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b0_11111_0000000000)
-	elseif Value.Rotation.y < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b1_11111_0000000000)
-	elseif Value.Rotation.y ~= Value.Rotation.y then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b1_11111_0000000001)
-	elseif Value.Rotation.y == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0)
+	if Value.cframe.Rotation.y > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b0_11111_0000000000)
+	elseif Value.cframe.Rotation.y < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b1_11111_0000000000)
+	elseif Value.cframe.Rotation.y ~= Value.cframe.Rotation.y then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b1_11111_0000000001)
+	elseif Value.cframe.Rotation.y == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0)
 	else
-		local float = Value.Rotation.y
+		local float = Value.cframe.Rotation.y
 		local Abosulte = math.abs(float)
 		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
 		local RoundedValue = (Abosulte // Interval) * Interval
@@ -270,18 +271,18 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rota
 		local Result = Mantissa
 			+ math.max(Exponent, 0) * 0x400
 			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, Result)
+		buffer.writeu16(SendBuffer, BLOCK_START + 17, Result)
 	end
-	if Value.Rotation.z > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b0_11111_0000000000)
-	elseif Value.Rotation.z < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b1_11111_0000000000)
-	elseif Value.Rotation.z ~= Value.Rotation.z then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b1_11111_0000000001)
-	elseif Value.Rotation.z == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0)
+	if Value.cframe.Rotation.z > 65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 19, 0b0_11111_0000000000)
+	elseif Value.cframe.Rotation.z < -65504 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 19, 0b1_11111_0000000000)
+	elseif Value.cframe.Rotation.z ~= Value.cframe.Rotation.z then
+		buffer.writeu16(SendBuffer, BLOCK_START + 19, 0b1_11111_0000000001)
+	elseif Value.cframe.Rotation.z == 0 then
+		buffer.writeu16(SendBuffer, BLOCK_START + 19, 0)
 	else
-		local float = Value.Rotation.z
+		local float = Value.cframe.Rotation.z
 		local Abosulte = math.abs(float)
 		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
 		local RoundedValue = (Abosulte // Interval) * Interval
@@ -293,17 +294,25 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { Position: Vector3, Rota
 		local Result = Mantissa
 			+ math.max(Exponent, 0) * 0x400
 			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, Result)
+		buffer.writeu16(SendBuffer, BLOCK_START + 19, Result)
 	end
 end
 
-local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamp: number, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} })
-	-- Read BLOCK: 6 bytes
-	local BLOCK_START = Read(6)
+local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} })
+	-- Read BLOCK: 4 bytes
+	local BLOCK_START = Read(4)
 	local Value = {} :: any
-	Value.timeStamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
+	Value.timeStamps = {}
+	local Elements_1 = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
+	for _ = 1, Elements_1 do
+		local OFFSET_0 = Read(1)
+		local Key_1 = buffer.readu8(RecieveBuffer, OFFSET_0)
+		local OFFSET_1 = Read(8)
+		local Element_1 = buffer.readf64(RecieveBuffer, OFFSET_1)
+		Value.timeStamps[Key_1] = Element_1
+	end
 	Value.cframes = {}
-	local Elements_1 = buffer.readu16(RecieveBuffer, BLOCK_START + 4)
+	Elements_1 = buffer.readu16(RecieveBuffer, BLOCK_START + 2)
 	for _ = 1, Elements_1 do
 		local OFFSET_0 = Read(1)
 		local Key_1 = buffer.readu8(RecieveBuffer, OFFSET_0)
@@ -602,7 +611,7 @@ Unreliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 1 then
-			local Value: { timeStamp: number, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} } = ReadEVENT_ServerReplicateCFrame()
+			local Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} } = ReadEVENT_ServerReplicateCFrame()
 			if Events.Unreliable[1] ~= nil then
 				Events.Unreliable[1](Value)
 			end
@@ -615,7 +624,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		Fire = function(Value: { Position: Vector3, Rotation: { x: number, y: number, z: number } }): ()
+		Fire = function(Value: { timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }): ()
 			local Previous = Save()
 			Load()
 			WriteEVENT_ClientReplicateCFrame(Value)
@@ -626,7 +635,7 @@ local Returns = table.freeze({
 		end
 	},
 	ServerReplicateCFrame = {
-		On = function(Listener: (Value: { timeStamp: number, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }) -> ()): () -> ()
+		On = function(Listener: (Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }) -> ()): () -> ()
 			Events.Unreliable[1] = Listener
 			return function (): ()
 				Events.Unreliable[1] = nil
