@@ -4,18 +4,18 @@ return function(tickRate: number, minBuffer: number, maxBuffer: number, alpha: n
 	local fix = 0.1
 	local recovery = 0.5
 
-	local function RegisterPacket(playerId: number, serverTime: number)
+	local function RegisterPacket(networkId: number, serverTime: number)
 		local clientNow = workspace:GetServerTimeNow()
 		local latency = clientNow - serverTime
 
-		if not playerLatencies[playerId] then
+		if not playerLatencies[networkId] then
 			--using the difference between current and last latency, i could smooth out the deviation (the variation in latency, which correlates to packet loss)
 			--this is using statistics https://en.wikipedia.org/wiki/Moving_average
-			playerLatencies[playerId] = { averageLatency = latency, deviation = 0, lastLatency = latency }
+			playerLatencies[networkId] = { averageLatency = latency, deviation = 0, lastLatency = latency }
 			return
 		end
 
-		local data = playerLatencies[playerId]
+		local data = playerLatencies[networkId]
 		if data.lastLatency then
 			local delta = math.abs(latency - data.lastLatency)
 			data.deviation = data.deviation * (1 - fix) + delta * fix
@@ -25,10 +25,10 @@ return function(tickRate: number, minBuffer: number, maxBuffer: number, alpha: n
 		data.lastLatency = latency
 	end
 
-	local function GetBuffer(playerId: number)
+	local function GetBuffer(networkId: number)
 		--calculate the interpolation buffer that accounts for expected latency, possible deviations and recovery from delays
 		--the buffer will be per player
-		local data = playerLatencies[playerId]
+		local data = playerLatencies[networkId]
 		if not data then
 			return minBuffer
 		end
