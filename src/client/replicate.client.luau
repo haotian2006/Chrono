@@ -74,7 +74,7 @@ local function PlayerAdded(player: Player, id: number)
 	local initialCFrame = CFrame.new(0, 4, 0)
 
 	if characters[player] and characters[player].PrimaryPart then
-		initialCFrame = (characters[player] :: any).PrimaryPart:GetPivot()
+		initialCFrame = (characters[player] :: any).PrimaryPart.CFrame
 	end
 
 	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
@@ -122,7 +122,7 @@ end)
 local lastSent = time()
 local lastSentCFrame = CFrame.new()
 
-RunService.RenderStepped:Connect(function(deltaTime: number)
+RunService.PreRender:Connect(function(deltaTime: number)
 	--GetServerTimeNow() is really nice, because it accounts for the RTT and can serve as the game world's timestamp.
 	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
 	local globalServerTime = workspace:GetServerTimeNow()
@@ -156,19 +156,19 @@ RunService.RenderStepped:Connect(function(deltaTime: number)
 				local smoothFactor = math.clamp(deltaTime * Config.SMOOTHING_CONSTANT, 0, 1)
 				data.lastCFrame = data.lastCFrame:Lerp(targetCFrame, smoothFactor)
 			end
-			data.character:PivotTo(data.lastCFrame :: any)
+			data.character.PrimaryPart.CFrame = data.lastCFrame :: any
 		end
 	end
 end)
 
-RunService.Heartbeat:Connect(function()
+RunService.PostSimulation:Connect(function()
 	if time() - lastSent < Config.TICK_RATE then
 		return
 	end
 	lastSent = time()
 
 	if player.Character and player.Character.PrimaryPart then
-		local currentCFrame = player.Character.PrimaryPart:GetPivot()
+		local currentCFrame = player.Character.PrimaryPart.CFrame
 		--if player did not move, don't network the change.
 		--CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 		--this allows for much nicer compression since I am using quaternions

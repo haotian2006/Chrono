@@ -124,7 +124,7 @@ local function GetTickInterval(character: Model): number
 	end
 end
 
-RunService.Heartbeat:Connect(function(deltaTime)
+RunService.PostSimulation:Connect(function(deltaTime)
 	local currentTime = workspace:GetServerTimeNow()
 	Grid.UpdateGrid()
 
@@ -146,7 +146,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		if latestSnapshot then
 			cframes[id] = latestSnapshot.cFrame
 		else
-			cframes[id] = character:GetPivot()
+			cframes[id] = (character.PrimaryPart :: any).CFrame --yeah... getpivot is just way too slow
 		end
 
 		lastTicks[id] = if idMap[id].clientLastTick
