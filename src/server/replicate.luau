@@ -105,7 +105,8 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 		return
 	end
 
-	data.snapshot:PushAt(workspace:GetServerTimeNow(), newCFrame)
+	data.clientLastTick = clientData.timeStamp
+	data.snapshot:PushAt(clientData.timeStamp, newCFrame)
 end)
 
 local function GetTickInterval(character: Model): number
@@ -148,7 +149,9 @@ RunService.Heartbeat:Connect(function(deltaTime)
 			cframes[id] = character:GetPivot()
 		end
 
-		lastTicks[id] = idMap[id].clientLastTick or workspace:GetServerTimeNow()
+		lastTicks[id] = if idMap[id].clientLastTick
+			then idMap[id].clientLastTick :: any --setting this up because in the future, i want to be able to decrease precision and encode GetServerTimeNow() into a much smaller number
+			else workspace:GetServerTimeNow()
 	end
 
 	if next(cframes) then
