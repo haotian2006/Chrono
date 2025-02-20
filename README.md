@@ -1,7 +1,7 @@
-# Custom replication v.0.1.0
+# Custom replication v.0.2.0
 
 ###
-Current initial release, expect bugs, glitches etc. Do not use in actual game.
+Replication itself is mostly ready. Use with caution in actual game and please report any bugs you find. Thanks!
 
 ### What is this?
 Roblox's replication is slow - physics is replicated at 20hz, and there is a massive interpolation buffer designed for mobile ppl.
