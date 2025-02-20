@@ -18,6 +18,3 @@ Features:
 
 Upcoming:
 * Custom character controller & server authoritative movement
-* Dynamic precision compression 
-* Incorporate tick based timestamp system to be able to reduce timestamps from f32 -> u8
-* Dead-reckoning
