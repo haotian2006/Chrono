@@ -52,7 +52,7 @@ local function AddNew(entity: Entity, entityType: string, hash: vector)
 end
 
 function Grid.UpdateGrid()
-	local currentTime = time()
+	local currentTime = os.clock()
 	if currentTime - lastUpdate < UPDATE_INTERVAL then
 		return
 	end

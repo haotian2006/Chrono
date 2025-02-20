@@ -134,7 +134,7 @@ Events.InitializeExistingPlayers.On(function(data)
 	end
 end)
 
-local lastSent = time()
+local lastSent = os.clock()
 local lastSentCFrame = CFrame.new()
 
 RunService.PreRender:Connect(function(deltaTime: number)
@@ -177,10 +177,10 @@ RunService.PreRender:Connect(function(deltaTime: number)
 end)
 
 RunService.PostSimulation:Connect(function()
-	if time() - lastSent < (playerTickRates[playerNetworkId] or Config.TICK_RATE) then
+	if os.clock() - lastSent < (playerTickRates[playerNetworkId] or Config.TICK_RATE) then
 		return
 	end
-	lastSent = time()
+	lastSent = os.clock()
 
 	if player.Character and player.Character.PrimaryPart then
 		local currentCFrame = player.Character.PrimaryPart.CFrame
