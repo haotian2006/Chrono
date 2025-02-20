@@ -153,6 +153,7 @@ Events.Reliable[1] = {}
 Queue.Reliable[1] = table.create(256)
 Events.Reliable[2] = {}
 Queue.Reliable[2] = table.create(256)
+export type Transform = { Position: Vector3, Rotation: { x: number, y: number, z: number } }
 local function WriteEVENT_ClientReplicateCFrame(Value: { timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }): ()
 	-- Allocate BLOCK: 21 bytes
 	local BLOCK_START = Allocate(21)

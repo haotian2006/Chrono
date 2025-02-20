@@ -1,20 +1,22 @@
 option ClientOutput = "./events/client"
 option ServerOutput = "./events/server"
 
+struct Transform {
+    Position: vector<f16>,
+    Rotation: struct {
+        x: f16,
+        y: f16,
+        z: f16,
+    }
+}
+
 event ClientReplicateCFrame {
     from: Client,
     type: Unreliable,
     call: SingleSync,
     data: struct {
         timeStamp: f64,
-        cframe: struct {
-            Position: vector<f16>,
-            Rotation: struct {
-                x: f16,
-                y: f16,
-                z: f16,
-            },
-        }
+        cframe: Transform,
     }
 }
 
@@ -24,14 +26,7 @@ event ServerReplicateCFrame {
     call: SingleSync,
     data: struct {
         timeStamps: map {[u8]: f64},
-        cframes: map {[u8]: struct {
-            Position: vector<f16>,
-            Rotation: struct {
-                x: f16,
-                y: f16,
-                z: f16,
-            },
-        }},
+        cframes: map {[u8]: Transform},
     }
 }
 

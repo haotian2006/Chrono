@@ -149,6 +149,7 @@ local Queue: any = {
 }
 
 Queue.Unreliable[0] = table.create(256)
+export type Transform = { Position: Vector3, Rotation: { x: number, y: number, z: number } }
 local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } })
 	-- Read BLOCK: 20 bytes
 	local BLOCK_START = Read(20)
