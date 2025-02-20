@@ -9,6 +9,8 @@ local Events = require(ReplicatedStorage.Events.server)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
+local Replication = {}
+
 local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: { [number]: {
 	player: Player,
@@ -180,4 +182,25 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	end
 end)
 
-return nil
+--Exposes a function for other scripts to get the most up to date cframe of a player
+--for my personal usecase, I am using it to bypass the physics buffer for hitbox calculation
+function Replication.GetLatestCFrame(player: Player): CFrame?
+	local id = playerIdMap[player]
+	if not id then
+		return nil
+	end
+
+	local data = idMap[id]
+	if not data then
+		return nil
+	end
+
+	local latestSnapshot = data.snapshot:GetLatest()
+	if latestSnapshot then
+		return latestSnapshot.cFrame
+	end
+
+	return nil
+end
+
+return Replication
