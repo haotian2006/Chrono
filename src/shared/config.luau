@@ -14,5 +14,6 @@ return table.freeze({
 	SMOOTHING_CONSTANT = 10,
 	TIME_SYNC_INTERVAL = 10,
 
-	ENABLE_CUSTOM_CHARACTERS = false,
+	ENABLE_CUSTOM_CHARACTERS = false, -- this will disable default roblox replication as well.
+	DISABLE_DEFAULT_REPLICATION = true, -- this is if you want to disable the default roblox replication, but still use their controller
 })

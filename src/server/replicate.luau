@@ -31,11 +31,19 @@ local function GetNextID(): number
 end
 
 local function OnCharacterAdded(player: Player, character: Model, id: number)
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
+
+	if Config.ENABLE_CUSTOM_CHARACTERS or Config.DISABLE_DEFAULT_REPLICATION then
+		if humanoidRootPart then
+			humanoidRootPart:SetNetworkOwner(player)
+			humanoidRootPart.Anchored = true
+		end
+	end
+
 	if Config.ENABLE_CUSTOM_CHARACTERS then
-		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
-		humanoidRootPart.Anchored = true
 		character.Parent = workspace.CurrentCamera
 	end
+
 	Grid.AddEntity(character, "player")
 	Events.InitializePlayer.FireAll({
 		id = id,

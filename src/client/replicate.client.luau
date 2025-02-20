@@ -71,6 +71,7 @@ local function PlayerAdded(player: Player, id: number)
 		- bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
+	--if not, we just unanchor on the client (since it might be anchored on the server)
 	if Config.ENABLE_CUSTOM_CHARACTERS then
 		characters[player] = ClientRig(player).Model
 
@@ -79,7 +80,10 @@ local function PlayerAdded(player: Player, id: number)
 			(workspace.CurrentCamera :: any).CameraSubject = characters[player]
 		end
 	else
-		characters[player] = player.Character :: any
+		local character = player.Character or player.CharacterAdded:Wait()
+		local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+		humanoidRootPart.Anchored = false
+		characters[player] = character
 	end
 
 	local initialCFrame = CFrame.new(0, 4, 0)
@@ -173,7 +177,7 @@ RunService.PreRender:Connect(function(deltaTime: number)
 end)
 
 RunService.PostSimulation:Connect(function()
-	if time() - lastSent < playerTickRates[playerNetworkId] or Config.TICK_RATE then
+	if time() - lastSent < (playerTickRates[playerNetworkId] or Config.TICK_RATE) then
 		return
 	end
 	lastSent = time()
