@@ -1,5 +1,5 @@
 {
-  "name": "custom-character-replication",
+  "name": "fondcoolreplication",
   "emitLegacyScripts": false,
   "tree": {
     "$className": "DataModel",
