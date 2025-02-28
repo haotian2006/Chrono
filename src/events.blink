@@ -15,7 +15,7 @@ event ClientReplicateCFrame {
     type: Unreliable,
     call: SingleSync,
     data: struct {
-        timeStamp: f64,
+        timeStamp: f16,
         cframe: Transform,
     }
 }
@@ -25,7 +25,7 @@ event ServerReplicateCFrame {
     type: Unreliable,
     call: SingleSync,
     data: struct {
-        timeStamps: map {[u8]: f64},
+        timeStamps: map {[u8]: f16},
         cframes: map {[u8]: Transform},
     }
 }

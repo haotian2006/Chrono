@@ -51,4 +51,7 @@ return {
 
 		return CFrame.new(position.X, position.Y, position.Z, x, y, z, w)
 	end,
+	EncodeTime = function(time: number): number
+		return time % 256
+	end,
 }

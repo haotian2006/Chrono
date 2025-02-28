@@ -144,7 +144,7 @@ local function GetTickInterval(character: Model, id: number): number
 end
 
 RunService.PostSimulation:Connect(function(deltaTime)
-	local currentTime = workspace:GetServerTimeNow()
+	local currentTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 	Grid.UpdateGrid()
 
 	local cframes = {}
@@ -169,8 +169,8 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		end
 
 		lastTicks[id] = if idMap[id].clientLastTick
-			then idMap[id].clientLastTick :: any --setting this up because in the future, i want to be able to decrease precision and encode GetServerTimeNow() into a much smaller number
-			else workspace:GetServerTimeNow()
+			then idMap[id].clientLastTick :: any
+			else Networkables.EncodeTime(workspace:GetServerTimeNow())
 	end
 
 	if next(cframes) then

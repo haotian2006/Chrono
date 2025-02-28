@@ -40,7 +40,7 @@ Events.ServerReplicateCFrame.On(function(serverData)
 	end
 
 	local cframes = serverData.cframes
-	local snapshotTime = workspace:GetServerTimeNow()
+	local snapshotTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 
 	for id, cframe in cframes do
 		local entry = idMap[id]
@@ -67,7 +67,7 @@ local function PlayerAdded(player: Player, id: number)
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(player)
 
-	local initialRenderTime = workspace:GetServerTimeNow()
+	local initialRenderTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 		- bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
@@ -140,7 +140,7 @@ local lastSentCFrame = CFrame.new()
 RunService.PreRender:Connect(function(deltaTime: number)
 	--GetServerTimeNow() is really nice, because it accounts for the RTT and can serve as the game world's timestamp.
 	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
-	local globalServerTime = workspace:GetServerTimeNow()
+	local globalServerTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 
 	for id, data in idMap do
 		if not data.character or not data.character.PrimaryPart or data.character == player.Character then
@@ -195,7 +195,7 @@ RunService.PostSimulation:Connect(function()
 
 		lastSentCFrame = currentCFrame
 		Events.ClientReplicateCFrame.Fire({
-			timeStamp = workspace:GetServerTimeNow(),
+			timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
 			cframe = networkable,
 		})
 	end
