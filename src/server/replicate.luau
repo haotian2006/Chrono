@@ -6,6 +6,7 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
+local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
@@ -18,6 +19,7 @@ local idMap = {} :: { [number]: {
 	clientLastTick: number?,
 } }
 local lastReplicatedTimes = {} :: { [number]: number }
+local replicators = {} :: { [number]: Model }
 
 local MAX_ID = 255
 local IncrementalFactoryUID = 0
@@ -40,6 +42,13 @@ local function OnCharacterAdded(player: Player, character: Model, id: number)
 			humanoidRootPart:SetNetworkOwner(player)
 			humanoidRootPart.Anchored = true
 		end
+	end
+
+	if Config.DISABLE_DEFAULT_REPLICATION then
+		local clone = Rig(player)
+		clone.Model.Parent = workspace.CurrentCamera
+
+		replicators[id] = clone.Model
 	end
 
 	if Config.ENABLE_CUSTOM_CHARACTERS then
@@ -179,6 +188,31 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			cframes = Networkables.NetworkableCFrameTable(cframes),
 			timeStamps = lastTicks,
 		})
+	end
+
+	if not Config.DISABLE_DEFAULT_REPLICATION then
+		return
+	end
+
+	--Since we disabled roblox replication, we won't be able to easily do collision detections on the server
+	--This module has each player be represented as a dummy parented to the camera (will not replicate)
+	--and i simply bulkmoveto them to the latest character cframe
+	local staged = {}
+	local targets = {}
+	for id, clone in replicators do
+		local data = idMap[id]
+		if data and data.snapshot and clone.PrimaryPart then
+			local latestSnapshot = data.snapshot:GetLatest()
+
+			if latestSnapshot then
+				table.insert(staged, clone.PrimaryPart)
+				table.insert(targets, latestSnapshot.cFrame)
+			end
+		end
+	end
+
+	if #staged > 0 then
+		workspace:BulkMoveTo(staged, targets)
 	end
 end)
 
