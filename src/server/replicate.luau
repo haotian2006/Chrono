@@ -1,9 +1,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local StarterPlayer = game:GetService("StarterPlayer")
 
 local Config = require(ReplicatedStorage.Shared.config)
-local Snapshots = require(ReplicatedStorage.Shared.snapshots)
+local CircularSnapshot = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
 local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
@@ -12,12 +13,15 @@ local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
 local Replication = {}
 
+local idStack = {} :: { number }
 local playerIdMap = {} :: { [Player]: number }
-local idMap = {} :: { [number]: {
-	player: Player,
-	snapshot: Snapshots.SnapshotInstance,
-	clientLastTick: number?,
-} }
+local idMap = {} :: {
+	[number]: {
+		player: Player,
+		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
+		clientLastTick: number?,
+	},
+}
 local lastReplicatedTimes = {} :: { [number]: number }
 local replicators = {} :: { [number]: Model }
 
@@ -25,7 +29,11 @@ local MAX_ID = 255
 local IncrementalFactoryUID = 0
 
 local function GetNextID(): number
-	--for reference, we are using u8s for now.
+	local reusedID = table.remove(idStack)
+	if reusedID then
+		return reusedID
+	end
+
 	if IncrementalFactoryUID + 1 == MAX_ID then
 		error("Max ID reached, please investigate.")
 	end
@@ -34,25 +42,24 @@ local function GetNextID(): number
 	return IncrementalFactoryUID
 end
 
+local function ReturnID(id: number)
+	table.insert(idStack, id)
+end
+
 local function OnCharacterAdded(player: Player, character: Model, id: number)
 	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
 
-	if Config.ENABLE_CUSTOM_CHARACTERS or Config.DISABLE_DEFAULT_REPLICATION then
+	if Config.DISABLE_DEFAULT_REPLICATION then
 		if humanoidRootPart then
-			humanoidRootPart:SetNetworkOwner(player)
 			humanoidRootPart.Anchored = true
 		end
 	end
 
 	if Config.DISABLE_DEFAULT_REPLICATION then
-		local clone = Rig(player)
-		clone.Model.Parent = workspace.CurrentCamera
+		local clone: Model = StarterPlayer.StarterCharacter:Clone()
+		clone.Parent = workspace.CurrentCamera
 
-		replicators[id] = clone.Model
-	end
-
-	if Config.ENABLE_CUSTOM_CHARACTERS then
-		character.Parent = workspace.CurrentCamera
+		replicators[id] = clone
 	end
 
 	Grid.AddEntity(character, "player")
@@ -93,7 +100,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 	playerIdMap[player] = id
 	idMap[id] = {
 		player = player,
-		snapshot = Snapshots.RegisterPlayer(player),
+		snapshot = CircularSnapshot(CFrame.identity.Lerp),
 		clientLastTick = nil,
 	}
 	lastReplicatedTimes[id] = 0
@@ -112,6 +119,8 @@ Players.PlayerRemoving:Connect(function(player)
 		idMap[id] = nil
 		lastReplicatedTimes[id] = nil
 		playerIdMap[player] = nil
+
+		ReturnID(id)
 	end
 end)
 
@@ -125,7 +134,7 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 	end
 
 	data.clientLastTick = clientData.timeStamp
-	data.snapshot:PushAt(clientData.timeStamp, newCFrame)
+	data.snapshot:Push(clientData.timeStamp, newCFrame)
 end)
 
 local function UpdateTick(id: number, tickRate: number)
@@ -161,20 +170,30 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 	for id, data in idMap do
 		local character = data.player.Character
-		if not character then
+		if not character or not character:FindFirstChild("HumanoidRootPart") then
 			continue
 		end
 		local tickInterval = GetTickInterval(character, id)
-		if currentTime - lastReplicatedTimes[id] < tickInterval then
+
+		local lastReplicated = lastReplicatedTimes[id]
+
+		local difference = (currentTime - lastReplicated) % 256
+
+		-- loop back around to 0
+		if difference > 0 and difference <= 128 then
+			lastReplicated -= 256
+		end
+
+		if currentTime - lastReplicated < tickInterval then
 			continue
 		end
 		lastReplicatedTimes[id] = currentTime
 
 		local latestSnapshot = data.snapshot:GetLatest()
 		if latestSnapshot then
-			cframes[id] = latestSnapshot.cFrame
+			cframes[id] = latestSnapshot.value
 		else
-			cframes[id] = (character.PrimaryPart :: any).CFrame --yeah... getpivot is just way too slow
+			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame --yeah... getpivot is just way too slow
 		end
 
 		lastTicks[id] = if idMap[id].clientLastTick
@@ -201,12 +220,13 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	local targets = {}
 	for id, clone in replicators do
 		local data = idMap[id]
-		if data and data.snapshot and clone.PrimaryPart then
+		local humanoidRootPart = clone:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if data and data.snapshot and humanoidRootPart then
 			local latestSnapshot = data.snapshot:GetLatest()
 
 			if latestSnapshot then
-				table.insert(staged, clone.PrimaryPart)
-				table.insert(targets, latestSnapshot.cFrame)
+				table.insert(staged, humanoidRootPart)
+				table.insert(targets, latestSnapshot.value)
 			end
 		end
 	end
@@ -231,7 +251,7 @@ function Replication.GetLatestCFrame(player: Player): CFrame?
 
 	local latestSnapshot = data.snapshot:GetLatest()
 	if latestSnapshot then
-		return latestSnapshot.cFrame
+		return latestSnapshot.value
 	end
 
 	return nil

@@ -3,15 +3,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.config)
-local Snapshots = require(ReplicatedStorage.Shared.snapshots)
+local CircularSnapshot = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
+local Util = {
+	LerpCFrame = function(a: CFrame, b: CFrame, decay: number, dt: number)
+		return a:Lerp(b, 1 - math.exp(-decay * dt))
+	end
+}
+
 local idMap = {} :: {
 	[number]: {
-		snapshot: Snapshots.SnapshotInstance,
+		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
 		character: Model,
 		lastCFrame: CFrame?,
 	},
@@ -49,7 +55,7 @@ Events.ServerReplicateCFrame.On(function(serverData)
 		end
 		--since CFrames are received in the networkable format, I have to decode it to be actual cframes. It is nicely done because of the roblox cframe.new overload for quaternions.
 		--same applies on the server as well of course.
-		entry.snapshot:PushAt(snapshotTime, Networkables.DecodeCFrame(cframe))
+		entry.snapshot:Push(snapshotTime, Networkables.DecodeCFrame(cframe))
 	end
 end)
 
@@ -65,7 +71,7 @@ local function PlayerAdded(player: Player, id: number)
 
 	initializedPlayers[player] = true
 
-	local registeredSnapshots = Snapshots.RegisterPlayer(player)
+	local registeredSnapshots = CircularSnapshot(CFrame.identity.Lerp)
 
 	local initialRenderTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 		- bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
@@ -92,7 +98,7 @@ local function PlayerAdded(player: Player, id: number)
 		initialCFrame = (characters[player] :: any).PrimaryPart.CFrame
 	end
 
-	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
+	registeredSnapshots:Push(initialRenderTime, initialCFrame)
 
 	idMap[id] = {
 		snapshot = registeredSnapshots,
@@ -143,7 +149,12 @@ RunService.PreRender:Connect(function(deltaTime: number)
 	local globalServerTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 
 	for id, data in idMap do
-		if not data.character or not data.character.PrimaryPart or data.character == player.Character then
+		if not data.character or data.character == player.Character then
+			continue
+		end
+
+		local HRP = data.character:FindFirstChild("HumanoidRootPart")
+		if not HRP or not HRP:IsA("BasePart") then
 			continue
 		end
 
@@ -168,10 +179,13 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			if not data.lastCFrame then
 				data.lastCFrame = targetCFrame
 			else
-				local smoothFactor = math.clamp(deltaTime * Config.SMOOTHING_CONSTANT, 0, 1)
-				data.lastCFrame = data.lastCFrame:Lerp(targetCFrame, smoothFactor)
+				data.lastCFrame = Util.LerpCFrame(data.lastCFrame, targetCFrame, Config.SMOOTHING_CONSTANT, deltaTime)
 			end
-			data.character.PrimaryPart.CFrame = data.lastCFrame :: any
+
+			-- make sure it isn't welded to anything else (e.g. being carried)
+			if HRP.AssemblyRootPart == HRP then
+				HRP.CFrame = data.lastCFrame :: CFrame
+			end
 		end
 	end
 end)
@@ -182,21 +196,28 @@ RunService.PostSimulation:Connect(function()
 	end
 	lastSent = os.clock()
 
-	if player.Character and player.Character.PrimaryPart then
-		local currentCFrame = player.Character.PrimaryPart.CFrame
-		--if player did not move, don't network the change.
-		--CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
-		--this allows for much nicer compression since I am using quaternions
-		local networkable = Networkables.MakeNetworkable(currentCFrame)
-
-		if vector.magnitude(networkable.Position :: any) < 0.1 then
-			return
-		end
-
-		lastSentCFrame = currentCFrame
-		Events.ClientReplicateCFrame.Fire({
-			timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
-			cframe = networkable,
-		})
+	if not player.Character then
+		return
 	end
+
+	local HRP = player.Character:FindFirstChild("HumanoidRootPart")
+	if not HRP or not HRP:IsA("BasePart") then
+		return
+	end
+
+	local currentCFrame = HRP.CFrame
+
+	--if player did not move, don't network the change.
+	--CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
+	--this allows for much nicer compression since I am using quaternions
+	local networkable = Networkables.MakeNetworkable(currentCFrame)
+
+	if vector.magnitude(networkable.Position :: any) < 0.1 then
+		return
+	end
+
+	Events.ClientReplicateCFrame.Fire({
+		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
+		cframe = networkable,
+	})
 end)
