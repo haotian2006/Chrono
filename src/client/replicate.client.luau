@@ -9,12 +9,6 @@ local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
-local Util = {
-	LerpCFrame = function(a: CFrame, b: CFrame, decay: number, dt: number)
-		return a:Lerp(b, 1 - math.exp(-decay * dt))
-	end
-}
-
 local idMap = {} :: {
 	[number]: {
 		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
@@ -29,7 +23,6 @@ local initializedPlayers = {} :: { [Player]: boolean }
 local characters = {} :: { [Player]: Model }
 local playerTickRates = {} :: { [number]: number }
 
-local playerRenderTimes = {} :: { [number]: number }
 local bufferTracker = InterpolationBuffer(Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
 
 local networkedCFrame = nil
@@ -105,8 +98,6 @@ local function PlayerAdded(player: Player, id: number)
 		character = characters[player],
 		lastCFrame = initialCFrame,
 	}
-	playerRenderTimes[id] = initialRenderTime
-
 	networkedCFrame = Networkables.MakeNetworkable(initialCFrame)
 
 	local character = characters[player]
@@ -164,23 +155,10 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
 
 		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
-		local renderTimeLerpFactor = math.clamp(deltaTime * Config.RENDER_LERP_FACTOR, 0, 1)
+		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 
-		--get the entity snapshot at the new render time - a smoothly interpolated value between the current and target render time.
-		--warning: having a too high lerp factor may increase the "interpolation buffer" - experiment with lower values / directly setting the render time.
-		--snapshots library internalls holds historical data to interpolate smoothly and avoid jitter.
-		--further logic is an implementation detail.
-		local currentRenderTime = playerRenderTimes[id] or targetRenderTime
-		local newRenderTime = lerp(currentRenderTime, targetRenderTime, renderTimeLerpFactor)
-		playerRenderTimes[id] = newRenderTime
-
-		local targetCFrame = data.snapshot:GetAt(newRenderTime)
 		if targetCFrame then
-			if not data.lastCFrame then
-				data.lastCFrame = targetCFrame
-			else
-				data.lastCFrame = Util.LerpCFrame(data.lastCFrame, targetCFrame, Config.SMOOTHING_CONSTANT, deltaTime)
-			end
+			data.lastCFrame = targetCFrame
 
 			-- make sure it isn't welded to anything else (e.g. being carried)
 			if HRP.AssemblyRootPart == HRP then
@@ -212,9 +190,11 @@ RunService.PostSimulation:Connect(function()
 	--this allows for much nicer compression since I am using quaternions
 	local networkable = Networkables.MakeNetworkable(currentCFrame)
 
-	if vector.magnitude(networkable.Position :: any) < 0.1 then
+	if vector.magnitude(lastSentCFrame.Position - networkable.Position :: any) < 0.1 then
 		return
 	end
+
+	lastSentCFrame = currentCFrame
 
 	Events.ClientReplicateCFrame.Fire({
 		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
