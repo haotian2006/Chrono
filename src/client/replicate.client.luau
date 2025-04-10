@@ -9,6 +9,10 @@ local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
+local function LerpCFrame(a: CFrame, b: CFrame, decay: number, dt: number)
+	return a:Lerp(b, 1 - math.exp(-decay * dt))
+end
+
 local idMap = {} :: {
 	[number]: {
 		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
@@ -158,8 +162,13 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 
 		if targetCFrame then
-			data.lastCFrame = targetCFrame
-
+			if not data.lastCFrame then
+				data.lastCFrame = targetCFrame
+			else
+				--we need this lerp because GetAt doesn't account for dt and packet delay will cause the CFrame to be jittery
+				--will add another artifical delay of ~frameTime/2 but that is inevitable
+				data.lastCFrame = LerpCFrame(data.lastCFrame, targetCFrame, Config.SMOOTHING_CONSTANT, deltaTime)
+			end
 			-- make sure it isn't welded to anything else (e.g. being carried)
 			if HRP.AssemblyRootPart == HRP then
 				HRP.CFrame = data.lastCFrame :: CFrame
