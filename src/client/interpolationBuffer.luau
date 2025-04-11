@@ -38,7 +38,12 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 		local deviationMargin = data.deviation * 2
 		local recoveryMargin = tickRate * recovery
 		local buffer = data.averageLatency + deviationMargin + recoveryMargin
-		return math.clamp(buffer, minBuffer, maxBuffer)
+
+		local clamped = math.clamp(buffer, minBuffer, maxBuffer)
+		if clamped ~= buffer then
+			--warn(`Had to clamp interpolation buffer! Before: {buffer} -- After: {clamped}`)
+		end
+		return clamped
 	end
 
 	return {

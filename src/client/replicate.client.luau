@@ -9,10 +9,6 @@ local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
-local function LerpCFrame(a: CFrame, b: CFrame, decay: number, dt: number)
-	return a:Lerp(b, 1 - math.exp(-decay * dt))
-end
-
 local idMap = {} :: {
 	[number]: {
 		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
@@ -22,7 +18,6 @@ local idMap = {} :: {
 }
 
 local player = Players.LocalPlayer
-local lerp = (math :: any).lerp
 local initializedPlayers = {} :: { [Player]: boolean }
 local characters = {} :: { [Player]: Model }
 local playerTickRates = {} :: { [number]: number }
@@ -50,9 +45,12 @@ Events.ServerReplicateCFrame.On(function(serverData)
 		if not entry then
 			continue
 		end
-		--since CFrames are received in the networkable format, I have to decode it to be actual cframes. It is nicely done because of the roblox cframe.new overload for quaternions.
-		--same applies on the server as well of course.
-		entry.snapshot:Push(snapshotTime, Networkables.DecodeCFrame(cframe))
+
+		if cframe ~= nil then
+			--since CFrames are received in the networkable format, I have to decode it to be actual cframes. It is nicely done because of the roblox cframe.new overload for quaternions.
+			--same applies on the server as well of course.
+			entry.snapshot:Push(snapshotTime, Networkables.DecodeCFrame(cframe))
+		end
 	end
 end)
 
@@ -159,16 +157,11 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
 
 		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
-		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 
+		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 		if targetCFrame then
-			if not data.lastCFrame then
-				data.lastCFrame = targetCFrame
-			else
-				--we need this lerp because GetAt doesn't account for dt and packet delay will cause the CFrame to be jittery
-				--will add another artifical delay of ~frameTime/2 but that is inevitable
-				data.lastCFrame = LerpCFrame(data.lastCFrame, targetCFrame, Config.SMOOTHING_CONSTANT, deltaTime)
-			end
+			data.lastCFrame = targetCFrame
+
 			-- make sure it isn't welded to anything else (e.g. being carried)
 			if HRP.AssemblyRootPart == HRP then
 				HRP.CFrame = data.lastCFrame :: CFrame
@@ -193,18 +186,15 @@ RunService.PostSimulation:Connect(function()
 	end
 
 	local currentCFrame = HRP.CFrame
-
-	--if player did not move, don't network the change.
-	--CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
-	--this allows for much nicer compression since I am using quaternions
-	local networkable = Networkables.MakeNetworkable(currentCFrame)
-
-	if vector.magnitude(lastSentCFrame.Position - networkable.Position :: any) < 0.1 then
-		return
-	end
+	-- local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
+	-- 	or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
 
 	lastSentCFrame = currentCFrame
 
+	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
+	-- this allows for much nicer compression since I am using quaternions
+	-- currently sends cframe even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
+	local networkable = Networkables.MakeNetworkable(currentCFrame)
 	Events.ClientReplicateCFrame.Fire({
 		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
 		cframe = networkable,

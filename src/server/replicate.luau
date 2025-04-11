@@ -23,6 +23,7 @@ local idMap = {} :: {
 	},
 }
 local lastReplicatedTimes = {} :: { [number]: number }
+local playerTickRates = {} :: { [number]: number }
 local replicators = {} :: { [number]: Model }
 
 local MAX_ID = 255
@@ -154,7 +155,8 @@ local function GetTickInterval(character: Model, id: number): number
 
 	local newTickRate = if #nearbyPlayers > 1 then baseTick else baseTick * 2
 
-	if lastReplicatedTimes[id] ~= newTickRate then
+	if newTickRate ~= playerTickRates[id] then
+		playerTickRates[id] = newTickRate
 		UpdateTick(id, newTickRate)
 	end
 
@@ -162,7 +164,6 @@ local function GetTickInterval(character: Model, id: number): number
 end
 
 RunService.PostSimulation:Connect(function(deltaTime)
-	local currentTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
 	Grid.UpdateGrid()
 
 	local cframes = {}
@@ -175,25 +176,19 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		end
 		local tickInterval = GetTickInterval(character, id)
 
+		local now = os.clock()
 		local lastReplicated = lastReplicatedTimes[id]
 
-		local difference = (currentTime - lastReplicated) % 256
-
-		-- loop back around to 0
-		if difference > 0 and difference <= 128 then
-			lastReplicated -= 256
-		end
-
-		if currentTime - lastReplicated < tickInterval then
+		if now - lastReplicated < tickInterval then
 			continue
 		end
-		lastReplicatedTimes[id] = currentTime
+		lastReplicatedTimes[id] = now
 
 		local latestSnapshot = data.snapshot:GetLatest()
 		if latestSnapshot then
 			cframes[id] = latestSnapshot.value
 		else
-			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame --yeah... getpivot is just way too slow
+			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
 		lastTicks[id] = if idMap[id].clientLastTick
