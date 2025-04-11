@@ -41,7 +41,7 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 
 		local clamped = math.clamp(buffer, minBuffer, maxBuffer)
 		if clamped ~= buffer then
-			--warn(`Had to clamp interpolation buffer! Before: {buffer} -- After: {clamped}`)
+			warn(`Had to clamp interpolation buffer! Before: {buffer} -- After: {clamped}`)
 		end
 		return clamped
 	end
