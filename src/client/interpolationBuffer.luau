@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Networkables = require(ReplicatedStorage.Common.Replication.MakeNetworkable)
+local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }
@@ -41,14 +41,14 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 			return minBuffer
 		end
 
-		local deviationMargin = data.deviation * 2
 		local recoveryMargin = tickRate * recovery
-		local buffer = data.averageLatency + deviationMargin + recoveryMargin
+		local buffer = data.averageLatency + data.deviation + recoveryMargin
 
 		local clamped = math.clamp(buffer, minBuffer, maxBuffer)
 		if clamped ~= buffer then
 			warn(`Had to clamp interpolation buffer! Before: {buffer} -- After: {clamped}`)
 		end
+
 		return clamped
 	end
 

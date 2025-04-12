@@ -13,7 +13,7 @@ export type CircularSnapshot<T> = {
 	GetAt: (self: CircularSnapshot<T>, t: number) -> T?,
 }
 
-local MAX_LENGTH = 10
+local MAX_LENGTH = 30
 local MAX_T = 256
 local HALF_T = MAX_T // 2
 
