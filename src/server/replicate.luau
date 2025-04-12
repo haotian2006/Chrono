@@ -176,7 +176,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		end
 		local tickInterval = GetTickInterval(character, id)
 
-		local now = os.clock()
+		local now = Networkables.EncodeTime(workspace:GetServerTimeNow())
 		local lastReplicated = lastReplicatedTimes[id]
 
 		if now - lastReplicated < tickInterval then
@@ -191,7 +191,9 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			CFrames[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
-		lastTicks[id] = if idMap[id].clientLastTick then idMap[id].clientLastTick :: any else os.clock()
+		lastTicks[id] = if idMap[id].clientLastTick
+			then idMap[id].clientLastTick :: any
+			else Networkables.EncodeTime(workspace:GetServerTimeNow())
 	end
 
 	if next(CFrames) then
