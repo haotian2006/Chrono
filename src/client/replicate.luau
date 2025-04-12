@@ -196,3 +196,17 @@ RunService.PostSimulation:Connect(function()
 		CFrame = networkable,
 	})
 end)
+
+return {
+	idMap = idMap,
+	playerTickRates = playerTickRates,
+	BufferTracker = bufferTracker,
+
+	GetAllNetworkIds = function()
+		local ids = {}
+		for id, _ in idMap do
+			table.insert(ids, id)
+		end
+		return ids
+	end,
+}

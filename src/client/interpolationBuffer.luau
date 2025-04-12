@@ -46,5 +46,6 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 	return {
 		RegisterPacket = RegisterPacket,
 		GetBuffer = GetBuffer,
+		PlayerLatencies = playerLatencies,
 	}
 end
