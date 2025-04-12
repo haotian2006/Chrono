@@ -39,7 +39,7 @@ Iris:Connect(function()
 					local latencyLabel = if latencyInfo.averageLatency > 0.2 then "🔴" else "🟢"
 					local deviationLabel = if latencyInfo.deviation > 0.05 then "🔴" else "🟢"
 
-					Iris.Text({ `{latencyLabel} Latency: {latencyInfo.averageLatency}` })
+					Iris.Text({ `{latencyLabel} Client1 -> Server -> Client2 Latency: {latencyInfo.averageLatency}` })
 					Iris.Text({ `{deviationLabel} Deviation: {latencyInfo.deviation}` })
 					Iris.Text({ `Buffer Time: {bufferTime}` })
 					Iris.Text({ `Tick Rate: {tickRate}` })
