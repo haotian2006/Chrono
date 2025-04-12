@@ -7,7 +7,6 @@
     "Events": { "$path": "src/events" },
     "Client": { "$path": "src/client" },
     "Debugger": { "$path": "src/debugger" },
-    "Iris": { "$path": "src/iris" }
     },
     "ServerScriptService": { "Services": { "$path": "src/server" } }
   }

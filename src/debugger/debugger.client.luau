@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Iris = require(ReplicatedStorage.Iris.Iris)
-local Replication = require(script.Parent.Parent.Client.replicate)
 local Config = require(ReplicatedStorage.Shared.config)
+local Iris = require(script.Parent.iris.Iris)
+local Replication = require(script.Parent.Parent.Client.replicate)
 
 local GetAllNetworkIds = Replication.GetAllNetworkIds
 local BufferTracker = Replication.BufferTracker
