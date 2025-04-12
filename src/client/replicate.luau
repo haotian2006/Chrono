@@ -8,6 +8,7 @@ local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
+local RenderCache = require(script.Parent.renderCache)
 
 local idMap = {} :: {
 	[number]: {
@@ -24,6 +25,11 @@ local playerTickRates = {} :: { [number]: number }
 
 local bufferTracker = InterpolationBuffer(Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
 
+RenderCache.Init({
+	playerTickRates = playerTickRates,
+	bufferTracker = bufferTracker,
+})
+
 local networkedCFrame = nil
 local playerNetworkId = 300
 
@@ -33,6 +39,9 @@ end)
 
 Events.ServerReplicateCFrame.On(function(serverData)
 	local clientLastTicks = serverData.timeStamps
+
+	RenderCache.OnSnapshotUpdate(clientLastTicks)
+
 	for id, serverTime in clientLastTicks do
 		bufferTracker.RegisterPacket(id, serverTime)
 	end
@@ -130,12 +139,8 @@ Events.InitializeExistingPlayers.On(function(data)
 	end
 end)
 
-local lastSent = os.clock()
-local lastSentCFrame = CFrame.new()
-
 RunService.PreRender:Connect(function(deltaTime: number)
-	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
-	local globalServerTime = os.clock()
+	RenderCache.Update(deltaTime)
 
 	for id, data in idMap do
 		if not data.character or data.character == player.Character then
@@ -147,14 +152,9 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			continue
 		end
 
-		--GetBuffer returns the interpolation buffer, which is the length of the buffer + your latency. The latency is the remote latency, but the buffer time itself accounts for the varying latency, packet loss, delayed packets - and smooths it out.
-		--snapshot timestamps are attached by the server, and the interpolation actually needs to start it from where the client receives it
-		--tldr, GetBuffer will by minimum return time - latency in a perfect world scenario
-		--in a game with network variations, the formula becomes time - (latency + deviationMargin + recoveryMargin)
-
-		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
-
+		local targetRenderTime = RenderCache.GetTargetRenderTime(id)
 		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
+
 		if targetCFrame then
 			data.lastCFrame = targetCFrame
 
@@ -165,6 +165,9 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		end
 	end
 end)
+
+local lastSent = os.clock()
+local lastSentCFrame = CFrame.new()
 
 RunService.PostSimulation:Connect(function()
 	if os.clock() - lastSent < (playerTickRates[playerNetworkId] or Config.TICK_RATE) then
