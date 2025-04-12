@@ -6,7 +6,7 @@
     "ReplicatedStorage": { "Shared": { "$path": "src/shared" },
     "Events": { "$path": "src/events" },
     "Client": { "$path": "src/client" },
-    "Debugger": { "$path": "src/debugger" },
+    "Debugger": { "$path": "src/debugger" }
     },
     "ServerScriptService": { "Services": { "$path": "src/server" } }
   }
