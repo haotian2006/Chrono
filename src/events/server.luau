@@ -150,12 +150,12 @@ local Queue: any = {
 
 Queue.Unreliable[0] = table.create(256)
 export type Transform = { Position: Vector3, Rotation: { x: number, y: number, z: number } }
-local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } })
+local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } })
 	-- Read BLOCK: 16 bytes
 	local BLOCK_START = Read(16)
 	local Value = {} :: any
 	Value.timeStamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
-	Value.cframe = {} :: any
+	Value.CFrame = {} :: any
 	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 4)
 	local X
 	local MantissaExponent = Encoded % 0x8000
@@ -231,20 +231,20 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, cframe: 
 		local Result = math.ldexp(Fraction, Exponent - 14)
 		Z = if Encoded // 0x8000 == 1 then -Result else Result
 	end
-	Value.cframe.Position = Vector3.new(X, Y, Z)
-	Value.cframe.Rotation = {} :: any
+	Value.CFrame.Position = Vector3.new(X, Y, Z)
+	Value.CFrame.Rotation = {} :: any
 	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 10)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
-			Value.cframe.Rotation.x = -math.huge
+			Value.CFrame.Rotation.x = -math.huge
 		else
-			Value.cframe.Rotation.x = math.huge
+			Value.CFrame.Rotation.x = math.huge
 		end
 	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.cframe.Rotation.x = 0 / 0
+		Value.CFrame.Rotation.x = 0 / 0
 	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.cframe.Rotation.x = 0
+		Value.CFrame.Rotation.x = 0
 	else
 		local Mantissa = MantissaExponent % 0x400
 		local Exponent = MantissaExponent // 0x400
@@ -255,20 +255,20 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, cframe: 
 			Fraction = Mantissa / 0x800 + 0.5
 		end
 		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.cframe.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
+		Value.CFrame.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
 	end
 	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 12)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
-			Value.cframe.Rotation.y = -math.huge
+			Value.CFrame.Rotation.y = -math.huge
 		else
-			Value.cframe.Rotation.y = math.huge
+			Value.CFrame.Rotation.y = math.huge
 		end
 	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.cframe.Rotation.y = 0 / 0
+		Value.CFrame.Rotation.y = 0 / 0
 	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.cframe.Rotation.y = 0
+		Value.CFrame.Rotation.y = 0
 	else
 		local Mantissa = MantissaExponent % 0x400
 		local Exponent = MantissaExponent // 0x400
@@ -279,20 +279,20 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, cframe: 
 			Fraction = Mantissa / 0x800 + 0.5
 		end
 		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.cframe.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
+		Value.CFrame.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
 	end
 	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 14)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
-			Value.cframe.Rotation.z = -math.huge
+			Value.CFrame.Rotation.z = -math.huge
 		else
-			Value.cframe.Rotation.z = math.huge
+			Value.CFrame.Rotation.z = math.huge
 		end
 	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.cframe.Rotation.z = 0 / 0
+		Value.CFrame.Rotation.z = 0 / 0
 	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.cframe.Rotation.z = 0
+		Value.CFrame.Rotation.z = 0
 	else
 		local Mantissa = MantissaExponent % 0x400
 		local Exponent = MantissaExponent // 0x400
@@ -303,12 +303,12 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, cframe: 
 			Fraction = Mantissa / 0x800 + 0.5
 		end
 		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.cframe.Rotation.z = if Encoded // 0x8000 == 1 then -Result else Result
+		Value.CFrame.Rotation.z = if Encoded // 0x8000 == 1 then -Result else Result
 	end
 	return Value
 end
 
-local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
 	-- Allocate BLOCK: 5 bytes
 	local BLOCK_START = Allocate(5)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
@@ -322,7 +322,7 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: 
 	end
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, Elements_1)
 	local Elements_1 = 0
-	for Key_1, Element_1 in Value.cframes do
+	for Key_1, Element_1 in Value.CFrames do
 		Elements_1 += 1
 		local OFFSET_0 = Allocate(1)
 		buffer.writeu8(SendBuffer, OFFSET_0, Key_1)
@@ -641,7 +641,7 @@ Unreliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer, Instan
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 0 then
-			local Value: { timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } } = ReadEVENT_ClientReplicateCFrame()
+			local Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } } = ReadEVENT_ClientReplicateCFrame()
 			if Events.Unreliable[0] ~= nil then
 				Events.Unreliable[0](Player, Value)
 			end
@@ -654,7 +654,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		On = function(Listener: (Player: Player, Value: { timeStamp: number, cframe: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }) -> ()): () -> ()
+		On = function(Listener: (Player: Player, Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }) -> ()): () -> ()
 			Events.Unreliable[0] = Listener
 			return function (): ()
 				Events.Unreliable[0] = nil
@@ -662,21 +662,21 @@ local Returns = table.freeze({
 		end
 	},
 	ServerReplicateCFrame = {
-		Fire = function(Player: Player, Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		Fire = function(Player: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireClient(Player, Buffer, SendInstances)
 		end,
-		FireAll = function(Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		FireAll = function(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireAllClients(Buffer, SendInstances)
 		end,
-		FireList = function(List: {Player}, Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		FireList = function(List: {Player}, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
@@ -685,7 +685,7 @@ local Returns = table.freeze({
 				Unreliable:FireClient(Player, Buffer, SendInstances)
 			end
 		end,
-		FireExcept = function(Except: Player, Value: { timeStamps: {[number]: number}, cframes: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		FireExcept = function(Except: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)

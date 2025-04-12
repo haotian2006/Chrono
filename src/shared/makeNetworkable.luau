@@ -22,11 +22,11 @@ return {
 			Rotation = { x = x, y = y, z = z },
 		}
 	end,
-	NetworkableCFrameTable = function(cframes: { CFrame })
+	NetworkableCFrameTable = function(CFrames: { CFrame })
 		local results = {}
-		for index, cframe in cframes do
-			local position = cframe.Position
-			local axis, angle = cframe:ToAxisAngle()
+		for index, CFrame in CFrames do
+			local position = CFrame.Position
+			local axis, angle = CFrame:ToAxisAngle()
 
 			local halfAngle = angle * 0.5
 			local sinHalf = math.sin(halfAngle)
@@ -50,8 +50,5 @@ return {
 		local w = if wSquared > 0 then math.sqrt(wSquared) else 0
 
 		return CFrame.new(position.X, position.Y, position.Z, x, y, z, w)
-	end,
-	EncodeTime = function(time: number): number
-		return time % 256
 	end,
 }

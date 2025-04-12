@@ -1,189 +1,148 @@
-export type SnapshotData<T> = {
-	t: number,
-	value: T,
+local Snapshot = {}
+
+export type SnapshotData = {
+	timeStamp: number,
+	CFrame: CFrame,
 }
 
-export type CircularSnapshot<T> = {
-	cache: { SnapshotData<T> },
-	pivotIndex: number?, -- to make math easier, this is stored as 0 indexed, then 1 is added whenever it's used for indexing
-	lerp: (T, T, number) -> T,
-
-	Push: (self: CircularSnapshot<T>, t: number, value: T) -> (),
-	GetLatest: (self: CircularSnapshot<T>) -> SnapshotData<T>?,
-	GetAt: (self: CircularSnapshot<T>, t: number) -> T?,
+export type SnapshotInstance = {
+	cache: { SnapshotData },
+	PushAt: (self: SnapshotInstance, timeStamp: number, CFrame: CFrame) -> (),
+	GetBefore: (self: SnapshotInstance, timeStamp: number) -> SnapshotData?,
+	GetAfter: (self: SnapshotInstance, timeStamp: number) -> SnapshotData?,
+	GetAt: (self: SnapshotInstance, timeStamp: number) -> CFrame?,
+	GetLatest: (self: SnapshotInstance) -> SnapshotData?,
+	RemoveOld: (self: SnapshotInstance, cutoffTime: number) -> (),
+	Destroy: (self: SnapshotInstance) -> (),
+	Subject: Player?,
 }
 
-local MAX_LENGTH = 30
-local MAX_T = 256
-local HALF_T = MAX_T // 2
+local MAX_LENGTH = 10
+local SnapshotInstances: { [Player]: SnapshotInstance } = {}
 
--- for lune test
-local map: typeof(math.map) = math.map
-	or function(x: any, inMin: any, inMax: any, outMin: any, outMax: any): any
-		local alpha = (x - inMin) / (inMax - inMin)
-
-		return outMin + ((outMax - outMin) * alpha)
+local function BinarySearch(cache: { SnapshotData }, timeStamp: number): number
+	local low, high = 1, #cache
+	while low <= high do
+		local mid = (low + high) // 2
+		if cache[mid].timeStamp < timeStamp then
+			low = mid + 1
+		else
+			high = mid - 1
+		end
 	end
-
-local function isGreater(t1: number, t2: number)
-	local delta = (t2 - t1) % MAX_T
-
-	-- 0 should be greater than 255, but 255 should be greater than 128
-	return delta > 0 and delta <= HALF_T
+	return low
 end
 
-local function Push<T>(self: CircularSnapshot<T>, t: number, value: T): ()
-	local data = {
-		t = t,
-		value = value,
-	}
-
+local function PushAt(self: SnapshotInstance, timeStamp: number, CFrame: CFrame): ()
 	local cache = self.cache
-	local pivotIndex = self.pivotIndex
+	local index = BinarySearch(cache, timeStamp)
+	table.insert(cache, index, { timeStamp = timeStamp, CFrame = CFrame })
 
-	-- first entry in the cache
-	if not pivotIndex then
-		cache[1] = data
-		self.pivotIndex = 0
-		return
-	end
-
-	local pivotValue = self.cache[pivotIndex + 1].t
-
-	if isGreater(pivotValue, t) then
-		-- Given value is greater than everything else, so overwrite the oldest value with it
-		local nextIndex = (pivotIndex + 1) % MAX_LENGTH
-		cache[nextIndex + 1] = data
-
-		self.pivotIndex = nextIndex
-		return
-	else
-		-- Given value is lower than the greatest value - it is probably an out of order packet
-		--  walk backwards through the snapshots until you find the correct insert position
-		--  cascade movement backwards until the oldest entry is removed, or we encounter an empty spot
-		--  could potentially be a binary search, but that gets somewhat complicated due to the circularity
-		--  our length is very low so the perf difference does not matter
-		local nextIndex = (pivotIndex - 1) % MAX_LENGTH
-		local currentValue = data
-
-		while nextIndex ~= pivotIndex and currentValue ~= nil do
-			local snapshotEntry = cache[nextIndex + 1]
-			if snapshotEntry == nil or isGreater(snapshotEntry.t, currentValue.t) then
-				cache[nextIndex + 1] = currentValue
-				currentValue = snapshotEntry
-			end
-
-			nextIndex = (nextIndex - 1) % MAX_LENGTH
-		end
+	if #cache > MAX_LENGTH then
+		table.remove(cache, 1)
 	end
 end
 
-local function GetLatest<T>(self: CircularSnapshot<T>): SnapshotData<T>?
-	if self.pivotIndex then
-		return self.cache[self.pivotIndex + 1]
-	end
-
-	return nil
-end
-
-local function GetBefore<T>(self: CircularSnapshot<T>, before: number): SnapshotData<T>?
-	local currentIndex = self.pivotIndex
-	if not currentIndex then
-		return nil
-	end
-
-	-- Walk backwards from the pivot until we find something smaller than the input, or until we reach the end of the array
-	repeat
-		local value = self.cache[currentIndex + 1]
-		if not value then
-			return nil
-		end
-
-		if isGreater(value.t, before) then
-			return value
-		end
-		currentIndex = (currentIndex - 1) % MAX_LENGTH
-	until currentIndex == self.pivotIndex
-
-	return nil
-end
-
-local function GetAfter<T>(self: CircularSnapshot<T>, after: number): SnapshotData<T>?
-	if not self.pivotIndex then
-		return nil
-	end
-
-	local currentIndex = (self.pivotIndex + 1) % MAX_LENGTH
-
-	-- Walk forwards from the lowest snapshot until we find something bigger than the input, or we reach the pivot
-	repeat
-		local value = self.cache[currentIndex + 1]
-
-		if value and isGreater(after, value.t) then
-			return value
-		end
-
-		currentIndex = (currentIndex + 1) % MAX_LENGTH
-	until currentIndex == (self.pivotIndex + 1) % MAX_LENGTH
-
-	return nil
-end
-
-local function GetAt<T>(self: CircularSnapshot<T>, at: number): T?
+local function GetBefore(self: SnapshotInstance, timeStamp: number): SnapshotData?
 	local cache = self.cache
-	local pivotIndex = self.pivotIndex
-	if not pivotIndex then
-		return nil
+	local index = BinarySearch(cache, timeStamp) - 1
+	if index >= 1 then
+		return cache[index]
+	end
+	return nil
+end
+
+local function GetAfter(self: SnapshotInstance, timeStamp: number): SnapshotData?
+	local cache = self.cache
+	local index = BinarySearch(cache, timeStamp)
+	if index <= #cache then
+		return cache[index]
 	end
 
+	return nil
+end
+
+local function GetAt(self: SnapshotInstance, timeStamp: number, currentCFrame: CFrame?): CFrame?
+	local cache = self.cache
+	if #cache == 0 then
+		return nil
+	end
 	if #cache == 1 then
-		return cache[pivotIndex + 1].value
+		return cache[1].CFrame
 	end
 
-	local before = GetBefore(self, at)
-	local after = GetAfter(self, at)
+	local before = self:GetBefore(timeStamp)
+	local after = self:GetAfter(timeStamp)
 
 	if before and after then
-		if before == after then
-			return before.value
-		end
-
-		local beforeTime = before.t
-		local afterTime = after.t
-		if beforeTime > afterTime then
-			-- We're crossing a loop, e.g. before is 255, after is 1
-			afterTime += 256
-		end
-
-		if beforeTime > at then
-			at += 256
-		end
-
-		local alpha = map(at, beforeTime, afterTime, 0, 1)
-		return self.lerp(before.value, after.value, alpha)
+		local alpha = (timeStamp - before.timeStamp) / (after.timeStamp - before.timeStamp)
+		return before.CFrame:Lerp(after.CFrame, alpha)
 	elseif before then
-		-- no after, i.e. we're returning the most recent cframe
-		warn("Tried to fetch a time that was ahead of snapshot storage!")
-		return before.value
+		return before.CFrame
 	elseif after then
-		-- no before, i.e. the time we're looking for doesn't exist in the snapshot
-		warn("Tried to fetch a time that was behind  snapshot storage!")
-		return after.value
+		if currentCFrame then
+			local alpha = timeStamp / after.timeStamp
+			return currentCFrame:Lerp(after.CFrame, alpha)
+		end
+		return after.CFrame
 	end
 
 	return nil
 end
 
-local function new<T>(lerp: (T, T, number) -> T): CircularSnapshot<T>
-	return {
-		cache = {},
-		pivotIndex = nil,
-		lerp = lerp,
+local function GetLatest(self: SnapshotInstance): SnapshotData?
+	local cache = self.cache
+	if #cache > 0 then
+		return cache[#cache]
+	end
 
-		Push = Push,
-		GetLatest = GetLatest,
+	return nil
+end
+
+local function RemoveOld(self: SnapshotInstance, cutoffTime: number): ()
+	local cache = self.cache
+	while #cache > 0 and cache[1].timeStamp < cutoffTime do
+		table.remove(cache, 1)
+	end
+end
+
+function Snapshot.new(subject: Player): SnapshotInstance
+	local cache: { SnapshotData } = {}
+
+	local function Destroy(): ()
+		table.clear(cache)
+	end
+
+	return {
+		cache = cache,
+		PushAt = PushAt,
+		GetBefore = GetBefore,
+		GetAfter = GetAfter,
 		GetAt = GetAt,
+		GetLatest = GetLatest,
+		RemoveOld = RemoveOld,
+		Destroy = Destroy,
+		Subject = subject,
 	}
 end
 
-return new
+function Snapshot.RegisterPlayer(player: Player): SnapshotInstance
+	if not SnapshotInstances[player] then
+		SnapshotInstances[player] = Snapshot.new(player)
+	end
+	return SnapshotInstances[player]
+end
+
+function Snapshot.DeregisterPlayer(player: Player): ()
+	local snapshot = SnapshotInstances[player]
+	if snapshot then
+		snapshot:Destroy()
+		SnapshotInstances[player] = nil
+	end
+end
+
+function Snapshot.GetSnapshotInstance(player: Player): SnapshotInstance
+	return SnapshotInstances[player] or Snapshot.RegisterPlayer(player)
+end
+
+return Snapshot

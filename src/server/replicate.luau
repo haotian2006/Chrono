@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
 local Config = require(ReplicatedStorage.Shared.config)
-local CircularSnapshot = require(ReplicatedStorage.Shared.snapshots)
+local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
 local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
@@ -18,7 +18,7 @@ local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: {
 	[number]: {
 		player: Player,
-		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
+		snapshot: Snapshots.SnapshotInstance,
 		clientLastTick: number?,
 	},
 }
@@ -101,7 +101,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 	playerIdMap[player] = id
 	idMap[id] = {
 		player = player,
-		snapshot = CircularSnapshot(CFrame.identity.Lerp),
+		snapshot = Snapshots.RegisterPlayer(player),
 		clientLastTick = nil,
 	}
 	lastReplicatedTimes[id] = 0
@@ -126,7 +126,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 Events.ClientReplicateCFrame.On(function(player, clientData)
-	local newCFrame = Networkables.DecodeCFrame(clientData.cframe)
+	local newCFrame = Networkables.DecodeCFrame(clientData.CFrame)
 
 	local id = playerIdMap[player]
 	local data = idMap[id]
@@ -135,7 +135,7 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 	end
 
 	data.clientLastTick = clientData.timeStamp
-	data.snapshot:Push(clientData.timeStamp, newCFrame)
+	data.snapshot:PushAt(clientData.timeStamp, newCFrame)
 end)
 
 local function UpdateTick(id: number, tickRate: number)
@@ -166,7 +166,7 @@ end
 RunService.PostSimulation:Connect(function(deltaTime)
 	Grid.UpdateGrid()
 
-	local cframes = {}
+	local CFrames = {}
 	local lastTicks = {}
 
 	for id, data in idMap do
@@ -186,20 +186,18 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 		local latestSnapshot = data.snapshot:GetLatest()
 		if latestSnapshot then
-			cframes[id] = latestSnapshot.value
+			CFrames[id] = latestSnapshot.CFrame
 		else
-			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
+			CFrames[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
-		lastTicks[id] = if idMap[id].clientLastTick
-			then idMap[id].clientLastTick :: any
-			else Networkables.EncodeTime(workspace:GetServerTimeNow())
+		lastTicks[id] = if idMap[id].clientLastTick then idMap[id].clientLastTick :: any else os.clock()
 	end
 
-	if next(cframes) then
+	if next(CFrames) then
 		Events.ServerReplicateCFrame.FireAll({
-			--using helper function that converts an entire table of cframes to networkable form
-			cframes = Networkables.NetworkableCFrameTable(cframes),
+			--using helper function that converts an entire table of CFrames to networkable form
+			CFrames = Networkables.NetworkableCFrameTable(CFrames),
 			timeStamps = lastTicks,
 		})
 	end
@@ -210,7 +208,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 	--Since we disabled roblox replication, we won't be able to easily do collision detections on the server
 	--This module has each player be represented as a dummy parented to the camera (will not replicate)
-	--and i simply bulkmoveto them to the latest character cframe
+	--and i simply bulkmoveto them to the latest character CFrame
 	local staged = {}
 	local targets = {}
 	for id, clone in replicators do
@@ -221,7 +219,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 			if latestSnapshot then
 				table.insert(staged, humanoidRootPart)
-				table.insert(targets, latestSnapshot.value)
+				table.insert(targets, latestSnapshot.CFrame)
 			end
 		end
 	end
@@ -231,7 +229,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	end
 end)
 
---Exposes a function for other scripts to get the most up to date cframe of a player
+--Exposes a function for other scripts to get the most up to date CFrame of a player
 --for my personal usecase, I am using it to bypass the physics buffer for hitbox calculation
 function Replication.GetLatestCFrame(player: Player): CFrame?
 	local id = playerIdMap[player]
@@ -246,7 +244,7 @@ function Replication.GetLatestCFrame(player: Player): CFrame?
 
 	local latestSnapshot = data.snapshot:GetLatest()
 	if latestSnapshot then
-		return latestSnapshot.value
+		return latestSnapshot.CFrame
 	end
 
 	return nil

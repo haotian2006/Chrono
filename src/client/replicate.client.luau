@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.config)
-local CircularSnapshot = require(ReplicatedStorage.Shared.snapshots)
+local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
@@ -11,7 +11,7 @@ local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
 local idMap = {} :: {
 	[number]: {
-		snapshot: CircularSnapshot.CircularSnapshot<CFrame>,
+		snapshot: Snapshots.SnapshotInstance,
 		character: Model,
 		lastCFrame: CFrame?,
 	},
@@ -37,20 +37,18 @@ Events.ServerReplicateCFrame.On(function(serverData)
 		bufferTracker.RegisterPacket(id, serverTime)
 	end
 
-	local cframes = serverData.cframes
-	local snapshotTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
+	local CFrames = serverData.CFrames
+	local snapshotTime = os.clock()
 
-	for id, cframe in cframes do
+	for id, CFrame in CFrames do
 		local entry = idMap[id]
 		if not entry then
 			continue
 		end
 
-		if cframe ~= nil then
-			--since CFrames are received in the networkable format, I have to decode it to be actual cframes. It is nicely done because of the roblox cframe.new overload for quaternions.
-			--same applies on the server as well of course.
-			entry.snapshot:Push(snapshotTime, Networkables.DecodeCFrame(cframe))
-		end
+		--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
+		--same applies on the server as well of course.
+		entry.snapshot:PushAt(snapshotTime, Networkables.DecodeCFrame(CFrame))
 	end
 end)
 
@@ -66,10 +64,9 @@ local function PlayerAdded(player: Player, id: number)
 
 	initializedPlayers[player] = true
 
-	local registeredSnapshots = CircularSnapshot(CFrame.identity.Lerp)
+	local registeredSnapshots = Snapshots.RegisterPlayer(player)
 
-	local initialRenderTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
-		- bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+	local initialRenderTime = os.clock() - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
 	--if not, we just unanchor on the client (since it might be anchored on the server)
@@ -93,7 +90,7 @@ local function PlayerAdded(player: Player, id: number)
 		initialCFrame = (characters[player] :: any).PrimaryPart.CFrame
 	end
 
-	registeredSnapshots:Push(initialRenderTime, initialCFrame)
+	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
 
 	idMap[id] = {
 		snapshot = registeredSnapshots,
@@ -137,9 +134,8 @@ local lastSent = os.clock()
 local lastSentCFrame = CFrame.new()
 
 RunService.PreRender:Connect(function(deltaTime: number)
-	--GetServerTimeNow() is really nice, because it accounts for the RTT and can serve as the game world's timestamp.
 	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
-	local globalServerTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
+	local globalServerTime = os.clock()
 
 	for id, data in idMap do
 		if not data.character or data.character == player.Character then
@@ -153,8 +149,8 @@ RunService.PreRender:Connect(function(deltaTime: number)
 
 		--GetBuffer returns the interpolation buffer, which is the length of the buffer + your latency. The latency is the remote latency, but the buffer time itself accounts for the varying latency, packet loss, delayed packets - and smooths it out.
 		--snapshot timestamps are attached by the server, and the interpolation actually needs to start it from where the client receives it
-		--tldr, GetBuffer will by minimum return GetServerTimeNow() - latency in a perfect world scenario
-		--in a game with network variations, the formula becomes GetServerTimeNow() - (latency + deviationMargin + recoveryMargin)
+		--tldr, GetBuffer will by minimum return time - latency in a perfect world scenario
+		--in a game with network variations, the formula becomes time - (latency + deviationMargin + recoveryMargin)
 
 		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 
@@ -193,10 +189,10 @@ RunService.PostSimulation:Connect(function()
 
 	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 	-- this allows for much nicer compression since I am using quaternions
-	-- currently sends cframe even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
+	-- currently sends CFrame even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
 	local networkable = Networkables.MakeNetworkable(currentCFrame)
 	Events.ClientReplicateCFrame.Fire({
-		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
-		cframe = networkable,
+		timeStamp = os.clock(),
+		CFrame = networkable,
 	})
 end)

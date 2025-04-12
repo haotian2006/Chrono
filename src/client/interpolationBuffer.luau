@@ -1,5 +1,3 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }
@@ -7,13 +5,7 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 	local recovery = 0.5
 
 	local function RegisterPacket(networkId: number, serverTime: number)
-		local clientNow = Networkables.EncodeTime(workspace:GetServerTimeNow())
-
-		-- handle wrap around, clientNow will always be after serverTime temporally, so this simple check suffices
-		if clientNow < serverTime then
-			clientNow += 256
-		end
-
+		local clientNow = os.clock()
 		local latency = clientNow - serverTime
 
 		if not playerLatencies[networkId] then
@@ -48,7 +40,6 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 		if clamped ~= buffer then
 			warn(`Had to clamp interpolation buffer! Before: {buffer} -- After: {clamped}`)
 		end
-
 		return clamped
 	end
 
