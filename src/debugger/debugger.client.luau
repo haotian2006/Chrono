@@ -36,7 +36,7 @@ Iris:Connect(function()
 				Iris.Separator()
 
 				if latencyInfo then
-					local latencyLabel = if latencyInfo.averageLatency > 0.05 then "🔴" else "🟢"
+					local latencyLabel = if latencyInfo.averageLatency > 0.2 then "🔴" else "🟢"
 					local deviationLabel = if latencyInfo.deviation > 0.05 then "🔴" else "🟢"
 
 					Iris.Text({ `{latencyLabel} Latency: {latencyInfo.averageLatency}` })
