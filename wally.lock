@@ -5,9 +5,4 @@ registry = "test"
 [[package]]
 name = "parihsz/fondcoolreplication"
 version = "0.2.2"
-dependencies = [["Iris", "sirmallard/iris@2.4.1"]]
-
-[[package]]
-name = "sirmallard/iris"
-version = "2.4.1"
 dependencies = []

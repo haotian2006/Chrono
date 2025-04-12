@@ -6,7 +6,7 @@ local Config = require(ReplicatedStorage.Shared.config)
 local GetAllNetworkIds = Replication.GetAllNetworkIds
 local BufferTracker = Replication.BufferTracker
 
-local playerTickRates = Replication.playerTickRates :: { [number]: number }
+local playerTickRates = Replication.playerTickRates
 local idMap = Replication.idMap
 
 local searchText = Iris.State("") :: typeof(Iris.State(""))
