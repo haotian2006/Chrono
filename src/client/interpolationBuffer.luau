@@ -1,5 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
+local Networkables = require(ReplicatedStorage.Common.Replication.MakeNetworkable)
 return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }
@@ -8,6 +8,12 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 
 	local function RegisterPacket(networkId: number, serverTime: number)
 		local clientNow = Networkables.EncodeTime(workspace:GetServerTimeNow())
+
+		-- handle wrap around, clientNow will always be after serverTime temporally, so this simple check suffices
+		if clientNow < serverTime then
+			clientNow += 256
+		end
+
 		local latency = clientNow - serverTime
 
 		if not playerLatencies[networkId] then
