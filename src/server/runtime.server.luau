@@ -1,4 +1,6 @@
 --!nonstrict
+--solely here for the structuring of this open source repository
+--do not use this in an actual game, thats skidding - loaders like this are bad practice
 local ServerScriptService = game:GetService("ServerScriptService")
 
 for _, moduleScript in ServerScriptService.Services:GetDescendants() do
