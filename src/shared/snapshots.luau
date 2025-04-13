@@ -37,7 +37,6 @@ local function PushAt(self: SnapshotInstance, timeStamp: number, CFrame: CFrame)
 	local cache = self.cache
 	local index = BinarySearch(cache, timeStamp)
 	table.insert(cache, index, { timeStamp = timeStamp, CFrame = CFrame })
-
 	if #cache > MAX_LENGTH then
 		table.remove(cache, 1)
 	end
@@ -45,20 +44,21 @@ end
 
 local function GetBefore(self: SnapshotInstance, timeStamp: number): SnapshotData?
 	local cache = self.cache
-	local index = BinarySearch(cache, timeStamp) - 1
-	if index >= 1 then
-		return cache[index]
+	for i = #cache, 1, -1 do
+		if cache[i].timeStamp < timeStamp then
+			return cache[i]
+		end
 	end
 	return nil
 end
 
 local function GetAfter(self: SnapshotInstance, timeStamp: number): SnapshotData?
 	local cache = self.cache
-	local index = BinarySearch(cache, timeStamp)
-	if index <= #cache then
-		return cache[index]
+	for i = 1, #cache do
+		if cache[i].timeStamp >= timeStamp then
+			return cache[i]
+		end
 	end
-
 	return nil
 end
 
@@ -95,7 +95,6 @@ local function GetLatest(self: SnapshotInstance): SnapshotData?
 	if #cache > 0 then
 		return cache[#cache]
 	end
-
 	return nil
 end
 
