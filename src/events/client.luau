@@ -154,149 +154,154 @@ Queue.Reliable[1] = table.create(256)
 Events.Reliable[2] = {}
 Queue.Reliable[2] = table.create(256)
 export type Transform = { Position: Vector3, Rotation: { x: number, y: number, z: number } }
-local function WriteEVENT_ClientReplicateCFrame(Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }): ()
-	-- Allocate BLOCK: 17 bytes
-	local BLOCK_START = Allocate(17)
+local function WriteEVENT_ClientReplicateCFrame(Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? }): ()
+	-- Allocate BLOCK: 6 bytes
+	local BLOCK_START = Allocate(6)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 0)
 	buffer.writef32(SendBuffer, BLOCK_START + 1, Value.timeStamp)
-	local Vector = Value.CFrame.Position
-	if Vector.X > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0b0_11111_0000000000)
-	elseif Vector.X < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0b1_11111_0000000000)
-	elseif Vector.X ~= Vector.X then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0b1_11111_0000000001)
-	elseif Vector.X == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, 0)
-	else
-		local float = Vector.X
-		local Abosulte = math.abs(float)
-		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-		local RoundedValue = (Abosulte // Interval) * Interval
-		local Fraction, Exponent = math.frexp(RoundedValue)
-		Exponent += 14
-		local Mantissa = math.round(if Exponent <= 0
-			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-			else Fraction * 0x800) % 0x400
-		local Result = Mantissa
-			+ math.max(Exponent, 0) * 0x400
-			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 5, Result)
-	end
-	if Vector.Y > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0b0_11111_0000000000)
-	elseif Vector.Y < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0b1_11111_0000000000)
-	elseif Vector.Y ~= Vector.Y then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0b1_11111_0000000001)
-	elseif Vector.Y == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, 0)
-	else
-		local float = Vector.Y
-		local Abosulte = math.abs(float)
-		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-		local RoundedValue = (Abosulte // Interval) * Interval
-		local Fraction, Exponent = math.frexp(RoundedValue)
-		Exponent += 14
-		local Mantissa = math.round(if Exponent <= 0
-			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-			else Fraction * 0x800) % 0x400
-		local Result = Mantissa
-			+ math.max(Exponent, 0) * 0x400
-			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 7, Result)
-	end
-	if Vector.Z > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b0_11111_0000000000)
-	elseif Vector.Z < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b1_11111_0000000000)
-	elseif Vector.Z ~= Vector.Z then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0b1_11111_0000000001)
-	elseif Vector.Z == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, 0)
-	else
-		local float = Vector.Z
-		local Abosulte = math.abs(float)
-		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-		local RoundedValue = (Abosulte // Interval) * Interval
-		local Fraction, Exponent = math.frexp(RoundedValue)
-		Exponent += 14
-		local Mantissa = math.round(if Exponent <= 0
-			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-			else Fraction * 0x800) % 0x400
-		local Result = Mantissa
-			+ math.max(Exponent, 0) * 0x400
-			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 9, Result)
-	end
-	if Value.CFrame.Rotation.x > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b0_11111_0000000000)
-	elseif Value.CFrame.Rotation.x < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b1_11111_0000000000)
-	elseif Value.CFrame.Rotation.x ~= Value.CFrame.Rotation.x then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0b1_11111_0000000001)
-	elseif Value.CFrame.Rotation.x == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, 0)
-	else
-		local float = Value.CFrame.Rotation.x
-		local Abosulte = math.abs(float)
-		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-		local RoundedValue = (Abosulte // Interval) * Interval
-		local Fraction, Exponent = math.frexp(RoundedValue)
-		Exponent += 14
-		local Mantissa = math.round(if Exponent <= 0
-			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-			else Fraction * 0x800) % 0x400
-		local Result = Mantissa
-			+ math.max(Exponent, 0) * 0x400
-			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 11, Result)
-	end
-	if Value.CFrame.Rotation.y > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b0_11111_0000000000)
-	elseif Value.CFrame.Rotation.y < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b1_11111_0000000000)
-	elseif Value.CFrame.Rotation.y ~= Value.CFrame.Rotation.y then
-		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0b1_11111_0000000001)
-	elseif Value.CFrame.Rotation.y == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 13, 0)
-	else
-		local float = Value.CFrame.Rotation.y
-		local Abosulte = math.abs(float)
-		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-		local RoundedValue = (Abosulte // Interval) * Interval
-		local Fraction, Exponent = math.frexp(RoundedValue)
-		Exponent += 14
-		local Mantissa = math.round(if Exponent <= 0
-			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-			else Fraction * 0x800) % 0x400
-		local Result = Mantissa
-			+ math.max(Exponent, 0) * 0x400
-			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 13, Result)
-	end
-	if Value.CFrame.Rotation.z > 65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b0_11111_0000000000)
-	elseif Value.CFrame.Rotation.z < -65504 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b1_11111_0000000000)
-	elseif Value.CFrame.Rotation.z ~= Value.CFrame.Rotation.z then
-		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0b1_11111_0000000001)
-	elseif Value.CFrame.Rotation.z == 0 then
-		buffer.writeu16(SendBuffer, BLOCK_START + 15, 0)
-	else
-		local float = Value.CFrame.Rotation.z
-		local Abosulte = math.abs(float)
-		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-		local RoundedValue = (Abosulte // Interval) * Interval
-		local Fraction, Exponent = math.frexp(RoundedValue)
-		Exponent += 14
-		local Mantissa = math.round(if Exponent <= 0
-			then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-			else Fraction * 0x800) % 0x400
-		local Result = Mantissa
-			+ math.max(Exponent, 0) * 0x400
-			+ if float < 0 then 0x8000 else 0
-		buffer.writeu16(SendBuffer, BLOCK_START + 15, Result)
+	buffer.writeu8(SendBuffer, BLOCK_START + 5, Value.CFrame ~= nil and 1 or 0)
+	if Value.CFrame ~= nil then
+		-- Allocate BLOCK: 12 bytes
+		local BLOCK_START = Allocate(12)
+		local Vector = Value.CFrame.Position
+		if Vector.X > 65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 0, 0b0_11111_0000000000)
+		elseif Vector.X < -65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 0, 0b1_11111_0000000000)
+		elseif Vector.X ~= Vector.X then
+			buffer.writeu16(SendBuffer, BLOCK_START + 0, 0b1_11111_0000000001)
+		elseif Vector.X == 0 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 0, 0)
+		else
+			local float = Vector.X
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, BLOCK_START + 0, Result)
+		end
+		if Vector.Y > 65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 2, 0b0_11111_0000000000)
+		elseif Vector.Y < -65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 2, 0b1_11111_0000000000)
+		elseif Vector.Y ~= Vector.Y then
+			buffer.writeu16(SendBuffer, BLOCK_START + 2, 0b1_11111_0000000001)
+		elseif Vector.Y == 0 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 2, 0)
+		else
+			local float = Vector.Y
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, BLOCK_START + 2, Result)
+		end
+		if Vector.Z > 65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 4, 0b0_11111_0000000000)
+		elseif Vector.Z < -65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 4, 0b1_11111_0000000000)
+		elseif Vector.Z ~= Vector.Z then
+			buffer.writeu16(SendBuffer, BLOCK_START + 4, 0b1_11111_0000000001)
+		elseif Vector.Z == 0 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 4, 0)
+		else
+			local float = Vector.Z
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, BLOCK_START + 4, Result)
+		end
+		if Value.CFrame.Rotation.x > 65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 6, 0b0_11111_0000000000)
+		elseif Value.CFrame.Rotation.x < -65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 6, 0b1_11111_0000000000)
+		elseif Value.CFrame.Rotation.x ~= Value.CFrame.Rotation.x then
+			buffer.writeu16(SendBuffer, BLOCK_START + 6, 0b1_11111_0000000001)
+		elseif Value.CFrame.Rotation.x == 0 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 6, 0)
+		else
+			local float = Value.CFrame.Rotation.x
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, BLOCK_START + 6, Result)
+		end
+		if Value.CFrame.Rotation.y > 65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 8, 0b0_11111_0000000000)
+		elseif Value.CFrame.Rotation.y < -65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 8, 0b1_11111_0000000000)
+		elseif Value.CFrame.Rotation.y ~= Value.CFrame.Rotation.y then
+			buffer.writeu16(SendBuffer, BLOCK_START + 8, 0b1_11111_0000000001)
+		elseif Value.CFrame.Rotation.y == 0 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 8, 0)
+		else
+			local float = Value.CFrame.Rotation.y
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, BLOCK_START + 8, Result)
+		end
+		if Value.CFrame.Rotation.z > 65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 10, 0b0_11111_0000000000)
+		elseif Value.CFrame.Rotation.z < -65504 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 10, 0b1_11111_0000000000)
+		elseif Value.CFrame.Rotation.z ~= Value.CFrame.Rotation.z then
+			buffer.writeu16(SendBuffer, BLOCK_START + 10, 0b1_11111_0000000001)
+		elseif Value.CFrame.Rotation.z == 0 then
+			buffer.writeu16(SendBuffer, BLOCK_START + 10, 0)
+		else
+			local float = Value.CFrame.Rotation.z
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, BLOCK_START + 10, Result)
+		end
 	end
 end
 
@@ -671,7 +676,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		Fire = function(Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }): ()
+		Fire = function(Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? }): ()
 			local Previous = Save()
 			Load()
 			WriteEVENT_ClientReplicateCFrame(Value)

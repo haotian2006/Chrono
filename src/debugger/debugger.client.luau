@@ -48,22 +48,19 @@ Iris:Connect(function()
 				end
 
 				Iris.Separator()
+				Iris.Text({ "📦 Snapshot Cache:" })
 
-				local entry = idMap[id]
-				local snapshots = entry and entry.snapshot.cache
-				if snapshots and #snapshots > 0 then
-					for i = 1, #snapshots do
-						local snap = snapshots[i]
-						if Iris.Tree({ `📝 Snapshot {i}` }).state.isUncollapsed.value then
-							Iris.Text({ `Timestamp: {snap.timeStamp}` })
-							Iris.Text({ `Position: {snap.CFrame.Position}` })
-							Iris.End()
-						else
-							Iris.End()
-						end
-					end
-				else
-					Iris.Text({ "No snapshots available." })
+				for i, snapshot in idMap[id].snapshot.cache do
+					local snapshotText = Iris.State("")
+
+					Iris.Text({ snapshotText:get() })
+
+					task.defer(function()
+						local position = if snapshot.CFrame
+							then `({snapshot.CFrame.Position.X}, {snapshot.CFrame.Position.Y}, {snapshot.CFrame.Position.Z})`
+							else "❌ nil"
+						snapshotText:set(`{i}: {snapshot.timeStamp} - Position {position}`)
+					end)
 				end
 			end
 

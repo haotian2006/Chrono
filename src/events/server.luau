@@ -150,160 +150,164 @@ local Queue: any = {
 
 Queue.Unreliable[0] = table.create(256)
 export type Transform = { Position: Vector3, Rotation: { x: number, y: number, z: number } }
-local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } })
-	-- Read BLOCK: 16 bytes
-	local BLOCK_START = Read(16)
+local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? })
+	-- Read BLOCK: 5 bytes
+	local BLOCK_START = Read(5)
 	local Value = {} :: any
 	Value.timeStamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
-	Value.CFrame = {} :: any
-	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 4)
-	local X
-	local MantissaExponent = Encoded % 0x8000
-	if MantissaExponent == 0b0_11111_0000000000  then
-		if Encoded // 0x8000 == 1 then
-			X = -math.huge
+	if buffer.readu8(RecieveBuffer, BLOCK_START + 4) == 1 then
+		-- Read BLOCK: 12 bytes
+		local BLOCK_START = Read(12)
+		Value.CFrame = {} :: any
+		local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
+		local X
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000  then
+			if Encoded // 0x8000 == 1 then
+				X = -math.huge
+			else
+				X = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000   then
+			X = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000   then
+			X = 0
 		else
-			X = math.huge
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction;
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			X = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-	elseif MantissaExponent == 0b1_11111_0000000000   then
-		X = 0 / 0
-	elseif MantissaExponent == 0b0_00000_0000000000   then
-		X = 0
-	else
-		local Mantissa = MantissaExponent % 0x400
-		local Exponent = MantissaExponent // 0x400
-		local Fraction;
-		if Exponent == 0 then
-			Fraction = Mantissa / 0x400
+		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 2)
+		local Y
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000  then
+			if Encoded // 0x8000 == 1 then
+				Y = -math.huge
+			else
+				Y = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000   then
+			Y = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000   then
+			Y = 0
 		else
-			Fraction = Mantissa / 0x800 + 0.5
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction;
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Y = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-		local Result = math.ldexp(Fraction, Exponent - 14)
-		X = if Encoded // 0x8000 == 1 then -Result else Result
-	end
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 6)
-	local Y
-	local MantissaExponent = Encoded % 0x8000
-	if MantissaExponent == 0b0_11111_0000000000  then
-		if Encoded // 0x8000 == 1 then
-			Y = -math.huge
+		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 4)
+		local Z
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000  then
+			if Encoded // 0x8000 == 1 then
+				Z = -math.huge
+			else
+				Z = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000   then
+			Z = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000   then
+			Z = 0
 		else
-			Y = math.huge
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction;
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Z = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Y = 0 / 0
-	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Y = 0
-	else
-		local Mantissa = MantissaExponent % 0x400
-		local Exponent = MantissaExponent // 0x400
-		local Fraction;
-		if Exponent == 0 then
-			Fraction = Mantissa / 0x400
+		Value.CFrame.Position = Vector3.new(X, Y, Z)
+		Value.CFrame.Rotation = {} :: any
+		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 6)
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000  then
+			if Encoded // 0x8000 == 1 then
+				Value.CFrame.Rotation.x = -math.huge
+			else
+				Value.CFrame.Rotation.x = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000   then
+			Value.CFrame.Rotation.x = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000   then
+			Value.CFrame.Rotation.x = 0
 		else
-			Fraction = Mantissa / 0x800 + 0.5
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction;
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Value.CFrame.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-		local Result = math.ldexp(Fraction, Exponent - 14)
-		Y = if Encoded // 0x8000 == 1 then -Result else Result
-	end
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 8)
-	local Z
-	local MantissaExponent = Encoded % 0x8000
-	if MantissaExponent == 0b0_11111_0000000000  then
-		if Encoded // 0x8000 == 1 then
-			Z = -math.huge
+		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 8)
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000  then
+			if Encoded // 0x8000 == 1 then
+				Value.CFrame.Rotation.y = -math.huge
+			else
+				Value.CFrame.Rotation.y = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000   then
+			Value.CFrame.Rotation.y = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000   then
+			Value.CFrame.Rotation.y = 0
 		else
-			Z = math.huge
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction;
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Value.CFrame.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Z = 0 / 0
-	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Z = 0
-	else
-		local Mantissa = MantissaExponent % 0x400
-		local Exponent = MantissaExponent // 0x400
-		local Fraction;
-		if Exponent == 0 then
-			Fraction = Mantissa / 0x400
+		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 10)
+		local MantissaExponent = Encoded % 0x8000
+		if MantissaExponent == 0b0_11111_0000000000  then
+			if Encoded // 0x8000 == 1 then
+				Value.CFrame.Rotation.z = -math.huge
+			else
+				Value.CFrame.Rotation.z = math.huge
+			end
+		elseif MantissaExponent == 0b1_11111_0000000000   then
+			Value.CFrame.Rotation.z = 0 / 0
+		elseif MantissaExponent == 0b0_00000_0000000000   then
+			Value.CFrame.Rotation.z = 0
 		else
-			Fraction = Mantissa / 0x800 + 0.5
+			local Mantissa = MantissaExponent % 0x400
+			local Exponent = MantissaExponent // 0x400
+			local Fraction;
+			if Exponent == 0 then
+				Fraction = Mantissa / 0x400
+			else
+				Fraction = Mantissa / 0x800 + 0.5
+			end
+			local Result = math.ldexp(Fraction, Exponent - 14)
+			Value.CFrame.Rotation.z = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-		local Result = math.ldexp(Fraction, Exponent - 14)
-		Z = if Encoded // 0x8000 == 1 then -Result else Result
-	end
-	Value.CFrame.Position = Vector3.new(X, Y, Z)
-	Value.CFrame.Rotation = {} :: any
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 10)
-	local MantissaExponent = Encoded % 0x8000
-	if MantissaExponent == 0b0_11111_0000000000  then
-		if Encoded // 0x8000 == 1 then
-			Value.CFrame.Rotation.x = -math.huge
-		else
-			Value.CFrame.Rotation.x = math.huge
-		end
-	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.CFrame.Rotation.x = 0 / 0
-	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.CFrame.Rotation.x = 0
-	else
-		local Mantissa = MantissaExponent % 0x400
-		local Exponent = MantissaExponent // 0x400
-		local Fraction;
-		if Exponent == 0 then
-			Fraction = Mantissa / 0x400
-		else
-			Fraction = Mantissa / 0x800 + 0.5
-		end
-		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.CFrame.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
-	end
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 12)
-	local MantissaExponent = Encoded % 0x8000
-	if MantissaExponent == 0b0_11111_0000000000  then
-		if Encoded // 0x8000 == 1 then
-			Value.CFrame.Rotation.y = -math.huge
-		else
-			Value.CFrame.Rotation.y = math.huge
-		end
-	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.CFrame.Rotation.y = 0 / 0
-	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.CFrame.Rotation.y = 0
-	else
-		local Mantissa = MantissaExponent % 0x400
-		local Exponent = MantissaExponent // 0x400
-		local Fraction;
-		if Exponent == 0 then
-			Fraction = Mantissa / 0x400
-		else
-			Fraction = Mantissa / 0x800 + 0.5
-		end
-		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.CFrame.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
-	end
-	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 14)
-	local MantissaExponent = Encoded % 0x8000
-	if MantissaExponent == 0b0_11111_0000000000  then
-		if Encoded // 0x8000 == 1 then
-			Value.CFrame.Rotation.z = -math.huge
-		else
-			Value.CFrame.Rotation.z = math.huge
-		end
-	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.CFrame.Rotation.z = 0 / 0
-	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.CFrame.Rotation.z = 0
-	else
-		local Mantissa = MantissaExponent % 0x400
-		local Exponent = MantissaExponent // 0x400
-		local Fraction;
-		if Exponent == 0 then
-			Fraction = Mantissa / 0x400
-		else
-			Fraction = Mantissa / 0x800 + 0.5
-		end
-		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.CFrame.Rotation.z = if Encoded // 0x8000 == 1 then -Result else Result
 	end
 	return Value
 end
@@ -641,7 +645,7 @@ Unreliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer, Instan
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 0 then
-			local Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } } = ReadEVENT_ClientReplicateCFrame()
+			local Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? } = ReadEVENT_ClientReplicateCFrame()
 			if Events.Unreliable[0] ~= nil then
 				Events.Unreliable[0](Player, Value)
 			end
@@ -654,7 +658,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		On = function(Listener: (Player: Player, Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } } }) -> ()): () -> ()
+		On = function(Listener: (Player: Player, Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? }) -> ()): () -> ()
 			Events.Unreliable[0] = Listener
 			return function (): ()
 				Events.Unreliable[0] = nil

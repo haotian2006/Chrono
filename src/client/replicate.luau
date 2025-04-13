@@ -186,15 +186,15 @@ RunService.PostSimulation:Connect(function()
 	end
 
 	local currentCFrame = HRP.CFrame
-	-- local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
-	-- 	or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
+	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
+		or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
 
 	lastSentCFrame = currentCFrame
 
 	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 	-- this allows for much nicer compression since I am using quaternions
 	-- currently sends CFrame even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
-	local networkable = Networkables.MakeNetworkable(currentCFrame)
+	local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil
 	Events.ClientReplicateCFrame.Fire({
 		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
 		CFrame = networkable,

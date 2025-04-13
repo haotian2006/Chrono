@@ -16,7 +16,7 @@ event ClientReplicateCFrame {
     call: SingleSync,
     data: struct {
         timeStamp: f32,
-        CFrame: Transform,
+        CFrame: Transform?,
     }
 }
 

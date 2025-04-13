@@ -126,7 +126,12 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 Events.ClientReplicateCFrame.On(function(player, clientData)
-	local newCFrame = Networkables.DecodeCFrame(clientData.CFrame)
+	local newCFrame: CFrame?
+	if clientData.CFrame == nil then
+		newCFrame = nil
+	else
+		newCFrame = Networkables.DecodeCFrame(clientData.CFrame)
+	end
 
 	local id = playerIdMap[player]
 	local data = idMap[id]
@@ -135,7 +140,7 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 	end
 
 	data.clientLastTick = clientData.timeStamp
-	data.snapshot:PushAt(clientData.timeStamp, newCFrame)
+	data.snapshot:PushAt(clientData.timeStamp, newCFrame :: CFrame)
 end)
 
 local function UpdateTick(id: number, tickRate: number)
@@ -196,13 +201,11 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			else Networkables.EncodeTime(workspace:GetServerTimeNow())
 	end
 
-	if next(CFrames) then
-		Events.ServerReplicateCFrame.FireAll({
-			--using helper function that converts an entire table of CFrames to networkable form
-			CFrames = Networkables.NetworkableCFrameTable(CFrames),
-			timeStamps = lastTicks,
-		})
-	end
+	Events.ServerReplicateCFrame.FireAll({
+		--using helper function that converts an entire table of CFrames to networkable form
+		CFrames = Networkables.NetworkableCFrameTable(CFrames),
+		timeStamps = lastTicks,
+	})
 
 	if not Config.DISABLE_DEFAULT_REPLICATION then
 		return

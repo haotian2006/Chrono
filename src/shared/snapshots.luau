@@ -40,6 +40,12 @@ local function PushAt(self: SnapshotInstance, timeStamp: number, CFrame: CFrame)
 	if #cache > MAX_LENGTH then
 		table.remove(cache, 1)
 	end
+	-- print(`Pushed snapshot at {timeStamp} with CFrame {CFrame}`)
+	-- print(`Cache length: {#cache}`)
+	-- print(`Cache contents:`)
+	-- for i, snapshot in cache do
+	-- 	print(`{i}: {snapshot.timeStamp} - {snapshot.CFrame}`)
+	-- end
 end
 
 local function GetBefore(self: SnapshotInstance, timeStamp: number): SnapshotData?
