@@ -66,8 +66,9 @@ local function PlayerAdded(player: Player, id: number)
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(player)
 
-	local initialRenderTime = workspace:GetServerTimeNow()
-		- bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+	local initialRenderTime = Networkables.EncodeTime(
+		workspace:GetServerTimeNow() - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+	)
 
 	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
 	--if not, we just unanchor on the client (since it might be anchored on the server)
@@ -153,7 +154,9 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		--tldr, GetBuffer will by minimum return time - latency in a perfect world scenario
 		--in a game with network variations, the formula becomes time - (latency + deviationMargin + recoveryMargin)
 
-		local targetRenderTime = globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+		local targetRenderTime = Networkables.EncodeTime(
+			globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+		)
 
 		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 		if targetCFrame then
