@@ -4,12 +4,11 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }
 	local fix = 0.1
-	local recovery = 0.5
+	local recovery = 0.1
 
-	local function RegisterPacket(networkId: number, serverTime: number)
+	local function RegisterPacket(networkId: number, serverTime: number, tickRate: number)
 		local clientNow = MakeNetworkable.EncodeTime(workspace:GetServerTimeNow())
-		local latency = clientNow - serverTime
-
+		local latency = clientNow - serverTime - tickRate * 0.5
 		if not playerLatencies[networkId] then
 			--using the difference between current and last latency, i could smooth out the deviation (the variation in latency, which correlates to packet loss)
 			--this is using statistics https://en.wikipedia.org/wiki/Moving_average

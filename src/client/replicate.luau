@@ -34,7 +34,7 @@ end)
 Events.ServerReplicateCFrame.On(function(serverData)
 	local clientLastTicks = serverData.timeStamps
 	for id, serverTime in clientLastTicks do
-		bufferTracker.RegisterPacket(id, serverTime)
+		bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
 	end
 
 	local CFrames = serverData.CFrames
@@ -70,21 +70,10 @@ local function PlayerAdded(player: Player, id: number)
 		workspace:GetServerTimeNow() - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 	)
 
-	--custom characters will be - server rig parented to camera (not physically simulated) and a client rig, that is physically simulated
-	--if not, we just unanchor on the client (since it might be anchored on the server)
-	if Config.ENABLE_CUSTOM_CHARACTERS then
-		characters[player] = ClientRig(player).Model
-
-		if player == Players.LocalPlayer then
-			player.Character = characters[player];
-			(workspace.CurrentCamera :: any).CameraSubject = characters[player]
-		end
-	else
-		local character = player.Character or player.CharacterAdded:Wait()
-		local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
-		humanoidRootPart.Anchored = false
-		characters[player] = character
-	end
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+	humanoidRootPart.Anchored = false
+	characters[player] = character
 
 	local initialCFrame = CFrame.new(0, 4, 0)
 
@@ -100,12 +89,6 @@ local function PlayerAdded(player: Player, id: number)
 		lastCFrame = initialCFrame,
 	}
 	networkedCFrame = Networkables.MakeNetworkable(initialCFrame)
-
-	local character = characters[player]
-
-	if not character then
-		return
-	end
 
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
@@ -194,10 +177,10 @@ RunService.PostSimulation:Connect(function()
 	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 	-- this allows for much nicer compression since I am using quaternions
 	-- currently sends CFrame even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
-	local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil
+	local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
 	Events.ClientReplicateCFrame.Fire({
 		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
-		CFrame = networkable,
+		cframe = networkable,
 	})
 end)
 
