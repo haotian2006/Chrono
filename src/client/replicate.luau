@@ -142,6 +142,7 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		)
 
 		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
+
 		if targetCFrame then
 			data.lastCFrame = targetCFrame
 
@@ -180,7 +181,7 @@ RunService.PostSimulation:Connect(function()
 	local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
 	Events.ClientReplicateCFrame.Fire({
 		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
-		cframe = networkable,
+		CFrame = networkable,
 	})
 end)
 

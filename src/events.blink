@@ -2,7 +2,7 @@ option ClientOutput = "./events/client"
 option ServerOutput = "./events/server"
 
 struct Transform {
-    Position: vector<f16>,
+    Position: vector<f32>,
     Rotation: struct {
         x: f16,
         y: f16,
