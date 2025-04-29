@@ -131,8 +131,8 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			continue
 		end
 
-		local HRP = data.character:FindFirstChild("HumanoidRootPart")
-		if not HRP or not HRP:IsA("BasePart") then
+		local humanoidRootPart = data.character:FindFirstChild("HumanoidRootPart")
+		if not humanoidRootPart or not humanoidRootPart:IsA("BasePart") then
 			continue
 		end
 
@@ -143,8 +143,8 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			data.lastCFrame = targetCFrame
 
 			-- make sure it isn't welded to anything else (e.g. being carried)
-			if HRP.AssemblyRootPart == HRP then
-				HRP.CFrame = data.lastCFrame :: CFrame
+			if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
+				humanoidRootPart.CFrame = data.lastCFrame :: CFrame
 			end
 		end
 	end
@@ -160,12 +160,12 @@ RunService.PostSimulation:Connect(function()
 		return
 	end
 
-	local HRP = player.Character:FindFirstChild("HumanoidRootPart")
-	if not HRP or not HRP:IsA("BasePart") then
+	local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart or not humanoidRootPart:IsA("BasePart") then
 		return
 	end
 
-	local currentCFrame = HRP.CFrame
+	local currentCFrame = humanoidRootPart.CFrame
 	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
 		or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
 

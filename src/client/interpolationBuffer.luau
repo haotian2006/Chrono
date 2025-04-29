@@ -36,7 +36,7 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 		local recoveryMargin = tickRate * recovery
 		local rawBuffer = data.averageLatency + data.deviation + recoveryMargin
 
-		local buffer = rawBuffer < minBuffer and (minBuffer + (minBuffer - rawBuffer) * 0.2) or rawBuffer
+		local buffer = if rawBuffer < minBuffer then minBuffer + (minBuffer - rawBuffer) * 0.2 else rawBuffer
 		if buffer > maxBuffer then
 			warn(`Interpolation buffer exceeded max! Was {buffer}, clamped to {maxBuffer}`)
 			buffer = maxBuffer
