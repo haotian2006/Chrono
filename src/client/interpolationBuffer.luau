@@ -3,8 +3,8 @@ local MakeNetworkable = require(ReplicatedStorage.Shared.makeNetworkable)
 return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }
-	local fix = 0.1
-	local recovery = 0.1
+	local fix = 0.2
+	local recovery = 0.3
 
 	local function RegisterPacket(networkId: number, serverTime: number, tickRate: number)
 		local clientNow = MakeNetworkable.EncodeTime(workspace:GetServerTimeNow())

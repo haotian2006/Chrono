@@ -31,26 +31,27 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-Events.ServerReplicateCFrame.On(function(serverData)
-	local clientLastTicks = serverData.timeStamps
-	for id, serverTime in clientLastTicks do
-		bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
-	end
-
-	local CFrames = serverData.CFrames
-	local snapshotTime = Networkables.EncodeTime(workspace:GetServerTimeNow())
-
-	for id, CFrame in CFrames do
-		local entry = idMap[id]
-		if not entry then
-			continue
+Events.ServerReplicateCFrame.On(
+	function(serverData: { timeStamps: { [number]: number }, CFrames: { [number]: Networkables.NetworkableCFrame } })
+		local clientLastTicks = serverData.timeStamps
+		for id, serverTime in clientLastTicks do
+			bufferTracker.RegisterPacket(id, serverTime)
 		end
 
-		--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
-		--same applies on the server as well of course.
-		entry.snapshot:PushAt(snapshotTime, Networkables.DecodeCFrame(CFrame))
+		local CFrames = serverData.CFrames
+
+		for id, CFrame in CFrames do
+			local entry = idMap[id]
+			if not entry then
+				continue
+			end
+
+			--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
+			--same applies on the server as well of course.
+			entry.snapshot:PushAt(clientLastTicks[id], Networkables.DecodeCFrame(CFrame))
+		end
 	end
-end)
+)
 
 local function PlayerAdded(player: Player, id: number)
 	if initializedPlayers[player] then
