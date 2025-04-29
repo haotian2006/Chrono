@@ -8,6 +8,7 @@ local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
+local RenderCache = require(script.Parent.renderCache)
 
 local idMap = {} :: {
 	[number]: {
@@ -23,6 +24,10 @@ local characters = {} :: { [Player]: Model }
 local playerTickRates = {} :: { [number]: number }
 
 local bufferTracker = InterpolationBuffer(Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
+RenderCache.Init({
+	playerTickRates = playerTickRates,
+	bufferTracker = bufferTracker,
+})
 
 local networkedCFrame = nil
 local playerNetworkId = 300
@@ -37,6 +42,7 @@ Events.ServerReplicateCFrame.On(function(serverData: { timeStamps: { [number]: n
 		bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
 	end
 
+	RenderCache.OnSnapshotUpdate(clientLastTicks)
 	local CFrames = serverData.CFrames
 
 	for id, CFrame in CFrames do
@@ -65,16 +71,14 @@ local function PlayerAdded(player: Player, id: number)
 
 	local registeredSnapshots = Snapshots.RegisterPlayer(player)
 
-	local initialRenderTime = Networkables.EncodeTime(
-		workspace:GetServerTimeNow() - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
-	)
+	local initialRenderTime = os.clock()
 
 	local character = player.Character or player.CharacterAdded:Wait()
 	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 	humanoidRootPart.Anchored = false
 	characters[player] = character
 
-	local initialCFrame = CFrame.new(0, 4, 0)
+	local initialCFrame = CFrame.identity
 
 	if characters[player] and characters[player].PrimaryPart then
 		initialCFrame = (characters[player] :: any).PrimaryPart.CFrame
@@ -88,6 +92,8 @@ local function PlayerAdded(player: Player, id: number)
 		lastCFrame = initialCFrame,
 	}
 	networkedCFrame = Networkables.MakeNetworkable(initialCFrame)
+
+	RenderCache.Add(id)
 
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 
@@ -115,11 +121,10 @@ Events.InitializeExistingPlayers.On(function(data)
 end)
 
 local lastSent = os.clock()
-local lastSentCFrame = CFrame.new()
+local lastSentCFrame = CFrame.identity
 
 RunService.PreRender:Connect(function(deltaTime: number)
-	--The target render time is what we will be aiming for - by retrieving the dynamic interpolation buffer and subtracting it, we can pretty accurately reflect the actual state at the world timestamp.
-	local globalServerTime = workspace:GetServerTimeNow()
+	RenderCache.Update(deltaTime)
 
 	for id, data in idMap do
 		if not data.character or data.character == player.Character then
@@ -131,15 +136,7 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			continue
 		end
 
-		--GetBuffer returns the interpolation buffer, which is the length of the buffer + your latency. The latency is the remote latency, but the buffer time itself accounts for the varying latency, packet loss, delayed packets - and smooths it out.
-		--snapshot timestamps are attached by the server, and the interpolation actually needs to start it from where the client receives it
-		--tldr, GetBuffer will by minimum return time - latency in a perfect world scenario
-		--in a game with network variations, the formula becomes time - (latency + deviationMargin + recoveryMargin)
-
-		local targetRenderTime = Networkables.EncodeTime(
-			globalServerTime - bufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
-		)
-
+		local targetRenderTime = RenderCache.GetTargetRenderTime(id)
 		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 
 		if targetCFrame then
@@ -179,7 +176,7 @@ RunService.PostSimulation:Connect(function()
 	-- currently sends CFrame even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
 	local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
 	Events.ClientReplicateCFrame.Fire({
-		timeStamp = Networkables.EncodeTime(workspace:GetServerTimeNow()),
+		timeStamp = os.clock(),
 		CFrame = networkable,
 	})
 end)

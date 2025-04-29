@@ -66,7 +66,7 @@ local function DecodeCFrame(data: NetworkableCFrame): CFrame
 end
 
 local function EncodeTime(time: number): number
-	return time - SERVER_TIME
+	return time
 end
 
 return {
