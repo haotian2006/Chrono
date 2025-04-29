@@ -34,13 +34,15 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 		end
 
 		local recoveryMargin = tickRate * recovery
-		local buffer = data.averageLatency + data.deviation + recoveryMargin
+		local rawBuffer = data.averageLatency + data.deviation + recoveryMargin
 
-		local clamped = math.clamp(buffer, minBuffer, maxBuffer)
-		if clamped ~= buffer then
-			warn(`Had to clamp interpolation buffer! Before: {buffer} -- After: {clamped}`)
+		local buffer = rawBuffer < minBuffer and (minBuffer + (minBuffer - rawBuffer) * 0.2) or rawBuffer
+		if buffer > maxBuffer then
+			warn(`Interpolation buffer exceeded max! Was {buffer}, clamped to {maxBuffer}`)
+			buffer = maxBuffer
 		end
-		return clamped
+
+		return buffer
 	end
 
 	return {

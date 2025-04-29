@@ -1,5 +1,5 @@
 return table.freeze({
-	MIN_BUFFER = 0.02,
+	MIN_BUFFER = 0.09,
 	MAX_BUFFER = 0.5,
 	TICK_RATE = 1 / 20,
 
