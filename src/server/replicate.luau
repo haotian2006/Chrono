@@ -176,7 +176,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 	for id, data in idMap do
 		local character = data.player.Character
-		if not character or not character:FindFirstChild("HumanoidRootPart") then
+		if not character or not character:FindFirstChild("HumanoidRootPart") or not idMap[id].clientLastTick then
 			continue
 		end
 		local tickInterval = GetTickInterval(character, id)
@@ -196,7 +196,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			CFrames[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
-		lastTicks[id] = if idMap[id].clientLastTick then idMap[id].clientLastTick :: any else now
+		lastTicks[id] = if idMap[id].clientLastTick then idMap[id].clientLastTick :: any else os.clock()
 	end
 
 	Events.ServerReplicateCFrame.FireAll({

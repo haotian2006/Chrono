@@ -8,6 +8,13 @@ return function(minBuffer: number, maxBuffer: number, alpha: number)
 	local function RegisterPacket(networkId: number, serverTime: number, tickRate: number)
 		local clientNow = RenderCache.GetEstimatedServerTime(networkId)
 		local latency = clientNow - serverTime
+		if latency > 1 then
+			playerLatencies[networkId] = nil
+			RenderCache.Remove(networkId)
+			RenderCache.Add(networkId)
+
+			warn(`{networkId} latency too high, cleared cache to repredict in case of error:! {latency}`)
+		end
 		if not playerLatencies[networkId] then
 			--using the difference between current and last latency, i could smooth out the deviation (the variation in latency, which correlates to packet loss)
 			--this is using statistics https://en.wikipedia.org/wiki/Moving_average
