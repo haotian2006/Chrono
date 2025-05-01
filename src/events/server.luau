@@ -149,98 +149,45 @@ local Queue: any = {
 }
 
 Queue.Unreliable[0] = table.create(256)
-export type Transform = { Position: Vector3, Rotation: { x: number, y: number, z: number } }
-local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? })
-	-- Read BLOCK: 5 bytes
-	local BLOCK_START = Read(5)
+export type Transform = { Position: Vector3, RotationY: number }
+local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, RotationY: number } })
+	-- Read BLOCK: 18 bytes
+	local BLOCK_START = Read(18)
 	local Value = {} :: any
 	Value.timeStamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
-	if buffer.readu8(RecieveBuffer, BLOCK_START + 4) == 1 then
-		-- Read BLOCK: 18 bytes
-		local BLOCK_START = Read(18)
-		Value.CFrame = {} :: any
-		local X = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
-		local Y = buffer.readf32(RecieveBuffer, BLOCK_START + 4)
-		local Z = buffer.readf32(RecieveBuffer, BLOCK_START + 8)
-		Value.CFrame.Position = Vector3.new(X, Y, Z)
-		Value.CFrame.Rotation = {} :: any
-		local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 12)
-		local MantissaExponent = Encoded % 0x8000
-		if MantissaExponent == 0b0_11111_0000000000  then
-			if Encoded // 0x8000 == 1 then
-				Value.CFrame.Rotation.x = -math.huge
-			else
-				Value.CFrame.Rotation.x = math.huge
-			end
-		elseif MantissaExponent == 0b1_11111_0000000000   then
-			Value.CFrame.Rotation.x = 0 / 0
-		elseif MantissaExponent == 0b0_00000_0000000000   then
-			Value.CFrame.Rotation.x = 0
+	Value.CFrame = {} :: any
+	local X = buffer.readf32(RecieveBuffer, BLOCK_START + 4)
+	local Y = buffer.readf32(RecieveBuffer, BLOCK_START + 8)
+	local Z = buffer.readf32(RecieveBuffer, BLOCK_START + 12)
+	Value.CFrame.Position = Vector3.new(X, Y, Z)
+	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 16)
+	local MantissaExponent = Encoded % 0x8000
+	if MantissaExponent == 0b0_11111_0000000000  then
+		if Encoded // 0x8000 == 1 then
+			Value.CFrame.RotationY = -math.huge
 		else
-			local Mantissa = MantissaExponent % 0x400
-			local Exponent = MantissaExponent // 0x400
-			local Fraction;
-			if Exponent == 0 then
-				Fraction = Mantissa / 0x400
-			else
-				Fraction = Mantissa / 0x800 + 0.5
-			end
-			local Result = math.ldexp(Fraction, Exponent - 14)
-			Value.CFrame.Rotation.x = if Encoded // 0x8000 == 1 then -Result else Result
+			Value.CFrame.RotationY = math.huge
 		end
-		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 14)
-		local MantissaExponent = Encoded % 0x8000
-		if MantissaExponent == 0b0_11111_0000000000  then
-			if Encoded // 0x8000 == 1 then
-				Value.CFrame.Rotation.y = -math.huge
-			else
-				Value.CFrame.Rotation.y = math.huge
-			end
-		elseif MantissaExponent == 0b1_11111_0000000000   then
-			Value.CFrame.Rotation.y = 0 / 0
-		elseif MantissaExponent == 0b0_00000_0000000000   then
-			Value.CFrame.Rotation.y = 0
+	elseif MantissaExponent == 0b1_11111_0000000000   then
+		Value.CFrame.RotationY = 0 / 0
+	elseif MantissaExponent == 0b0_00000_0000000000   then
+		Value.CFrame.RotationY = 0
+	else
+		local Mantissa = MantissaExponent % 0x400
+		local Exponent = MantissaExponent // 0x400
+		local Fraction;
+		if Exponent == 0 then
+			Fraction = Mantissa / 0x400
 		else
-			local Mantissa = MantissaExponent % 0x400
-			local Exponent = MantissaExponent // 0x400
-			local Fraction;
-			if Exponent == 0 then
-				Fraction = Mantissa / 0x400
-			else
-				Fraction = Mantissa / 0x800 + 0.5
-			end
-			local Result = math.ldexp(Fraction, Exponent - 14)
-			Value.CFrame.Rotation.y = if Encoded // 0x8000 == 1 then -Result else Result
+			Fraction = Mantissa / 0x800 + 0.5
 		end
-		Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 16)
-		local MantissaExponent = Encoded % 0x8000
-		if MantissaExponent == 0b0_11111_0000000000  then
-			if Encoded // 0x8000 == 1 then
-				Value.CFrame.Rotation.z = -math.huge
-			else
-				Value.CFrame.Rotation.z = math.huge
-			end
-		elseif MantissaExponent == 0b1_11111_0000000000   then
-			Value.CFrame.Rotation.z = 0 / 0
-		elseif MantissaExponent == 0b0_00000_0000000000   then
-			Value.CFrame.Rotation.z = 0
-		else
-			local Mantissa = MantissaExponent % 0x400
-			local Exponent = MantissaExponent // 0x400
-			local Fraction;
-			if Exponent == 0 then
-				Fraction = Mantissa / 0x400
-			else
-				Fraction = Mantissa / 0x800 + 0.5
-			end
-			local Result = math.ldexp(Fraction, Exponent - 14)
-			Value.CFrame.Rotation.z = if Encoded // 0x8000 == 1 then -Result else Result
-		end
+		local Result = math.ldexp(Fraction, Exponent - 14)
+		Value.CFrame.RotationY = if Encoded // 0x8000 == 1 then -Result else Result
 	end
 	return Value
 end
 
-local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
 	-- Allocate BLOCK: 5 bytes
 	local BLOCK_START = Allocate(5)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
@@ -266,16 +213,16 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: 
 		local OFFSET_3 = Allocate(4)
 		buffer.writef32(SendBuffer, OFFSET_3, Vector.Z)
 		local OFFSET_4 = Allocate(2)
-		if Element_1.Rotation.x > 65504 then
+		if Element_1.RotationY > 65504 then
 			buffer.writeu16(SendBuffer, OFFSET_4, 0b0_11111_0000000000)
-		elseif Element_1.Rotation.x < -65504 then
+		elseif Element_1.RotationY < -65504 then
 			buffer.writeu16(SendBuffer, OFFSET_4, 0b1_11111_0000000000)
-		elseif Element_1.Rotation.x ~= Element_1.Rotation.x then
+		elseif Element_1.RotationY ~= Element_1.RotationY then
 			buffer.writeu16(SendBuffer, OFFSET_4, 0b1_11111_0000000001)
-		elseif Element_1.Rotation.x == 0 then
+		elseif Element_1.RotationY == 0 then
 			buffer.writeu16(SendBuffer, OFFSET_4, 0)
 		else
-			local float = Element_1.Rotation.x
+			local float = Element_1.RotationY
 			local Abosulte = math.abs(float)
 			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
 			local RoundedValue = (Abosulte // Interval) * Interval
@@ -288,54 +235,6 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: 
 				+ math.max(Exponent, 0) * 0x400
 				+ if float < 0 then 0x8000 else 0
 			buffer.writeu16(SendBuffer, OFFSET_4, Result)
-		end
-		local OFFSET_5 = Allocate(2)
-		if Element_1.Rotation.y > 65504 then
-			buffer.writeu16(SendBuffer, OFFSET_5, 0b0_11111_0000000000)
-		elseif Element_1.Rotation.y < -65504 then
-			buffer.writeu16(SendBuffer, OFFSET_5, 0b1_11111_0000000000)
-		elseif Element_1.Rotation.y ~= Element_1.Rotation.y then
-			buffer.writeu16(SendBuffer, OFFSET_5, 0b1_11111_0000000001)
-		elseif Element_1.Rotation.y == 0 then
-			buffer.writeu16(SendBuffer, OFFSET_5, 0)
-		else
-			local float = Element_1.Rotation.y
-			local Abosulte = math.abs(float)
-			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-			local RoundedValue = (Abosulte // Interval) * Interval
-			local Fraction, Exponent = math.frexp(RoundedValue)
-			Exponent += 14
-			local Mantissa = math.round(if Exponent <= 0
-				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-				else Fraction * 0x800) % 0x400
-			local Result = Mantissa
-				+ math.max(Exponent, 0) * 0x400
-				+ if float < 0 then 0x8000 else 0
-			buffer.writeu16(SendBuffer, OFFSET_5, Result)
-		end
-		local OFFSET_6 = Allocate(2)
-		if Element_1.Rotation.z > 65504 then
-			buffer.writeu16(SendBuffer, OFFSET_6, 0b0_11111_0000000000)
-		elseif Element_1.Rotation.z < -65504 then
-			buffer.writeu16(SendBuffer, OFFSET_6, 0b1_11111_0000000000)
-		elseif Element_1.Rotation.z ~= Element_1.Rotation.z then
-			buffer.writeu16(SendBuffer, OFFSET_6, 0b1_11111_0000000001)
-		elseif Element_1.Rotation.z == 0 then
-			buffer.writeu16(SendBuffer, OFFSET_6, 0)
-		else
-			local float = Element_1.Rotation.z
-			local Abosulte = math.abs(float)
-			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
-			local RoundedValue = (Abosulte // Interval) * Interval
-			local Fraction, Exponent = math.frexp(RoundedValue)
-			Exponent += 14
-			local Mantissa = math.round(if Exponent <= 0
-				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-				else Fraction * 0x800) % 0x400
-			local Result = Mantissa
-				+ math.max(Exponent, 0) * 0x400
-				+ if float < 0 then 0x8000 else 0
-			buffer.writeu16(SendBuffer, OFFSET_6, Result)
 		end
 	end
 	buffer.writeu16(SendBuffer, BLOCK_START + 3, Elements_1)
@@ -507,7 +406,7 @@ Unreliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer, Instan
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 0 then
-			local Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? } = ReadEVENT_ClientReplicateCFrame()
+			local Value: { timeStamp: number, CFrame: { Position: Vector3, RotationY: number } } = ReadEVENT_ClientReplicateCFrame()
 			if Events.Unreliable[0] ~= nil then
 				Events.Unreliable[0](Player, Value)
 			end
@@ -520,7 +419,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		On = function(Listener: (Player: Player, Value: { timeStamp: number, CFrame: { Position: Vector3, Rotation: { x: number, y: number, z: number } }? }) -> ()): () -> ()
+		On = function(Listener: (Player: Player, Value: { timeStamp: number, CFrame: { Position: Vector3, RotationY: number } }) -> ()): () -> ()
 			Events.Unreliable[0] = Listener
 			return function (): ()
 				Events.Unreliable[0] = nil
@@ -528,21 +427,21 @@ local Returns = table.freeze({
 		end
 	},
 	ServerReplicateCFrame = {
-		Fire = function(Player: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		Fire = function(Player: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireClient(Player, Buffer, SendInstances)
 		end,
-		FireAll = function(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		FireAll = function(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireAllClients(Buffer, SendInstances)
 		end,
-		FireList = function(List: {Player}, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		FireList = function(List: {Player}, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
@@ -551,7 +450,7 @@ local Returns = table.freeze({
 				Unreliable:FireClient(Player, Buffer, SendInstances)
 			end
 		end,
-		FireExcept = function(Except: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, Rotation: { x: number, y: number, z: number } }} }): ()
+		FireExcept = function(Except: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)

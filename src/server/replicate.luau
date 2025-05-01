@@ -130,7 +130,7 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 	if clientData.CFrame == nil then
 		newCFrame = nil
 	else
-		newCFrame = Networkables.DecodeCFrame(clientData.CFrame)
+		newCFrame = Networkables.DecodeYawCFrame(clientData.CFrame)
 	end
 
 	local id = playerIdMap[player]
@@ -201,7 +201,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 	Events.ServerReplicateCFrame.FireAll({
 		--using helper function that converts an entire table of CFrames to networkable form
-		CFrames = Networkables.NetworkableCFrameTable(CFrames),
+		CFrames = Networkables.NetworkableYawCFrameTable(CFrames),
 		timeStamps = lastTicks,
 	})
 

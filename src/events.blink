@@ -3,11 +3,7 @@ option ServerOutput = "./events/server"
 
 struct Transform {
     Position: vector<f32>,
-    Rotation: struct {
-        x: f16,
-        y: f16,
-        z: f16,
-    }
+    RotationY: f16,
 }
 
 event ClientReplicateCFrame {
@@ -16,7 +12,7 @@ event ClientReplicateCFrame {
     call: SingleSync,
     data: struct {
         timeStamp: f32,
-        CFrame: Transform?,
+        CFrame: Transform
     }
 }
 

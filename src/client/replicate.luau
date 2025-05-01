@@ -53,7 +53,7 @@ Events.ServerReplicateCFrame.On(function(serverData: { timeStamps: { [number]: n
 
 		--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
 		--same applies on the server as well of course.
-		entry.snapshot:PushAt(clientLastTicks[id], Networkables.DecodeCFrame(CFrame))
+		entry.snapshot:PushAt(clientLastTicks[id], Networkables.DecodeYawCFrame(CFrame))
 	end
 end)
 
@@ -91,7 +91,7 @@ local function PlayerAdded(player: Player, id: number)
 		character = characters[player],
 		lastCFrame = initialCFrame,
 	}
-	networkedCFrame = Networkables.MakeNetworkable(initialCFrame)
+	networkedCFrame = Networkables.MakeYawNetworkable(initialCFrame)
 
 	RenderCache.Add(id)
 
@@ -174,7 +174,8 @@ RunService.PostSimulation:Connect(function()
 	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 	-- this allows for much nicer compression since I am using quaternions
 	-- currently sends CFrame even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
-	local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
+	-- local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
+	local networkable = Networkables.MakeYawNetworkable(currentCFrame)
 	Events.ClientReplicateCFrame.Fire({
 		timeStamp = os.clock(),
 		CFrame = networkable,
