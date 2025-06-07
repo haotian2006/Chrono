@@ -56,10 +56,10 @@ Iris:Connect(function()
 					Iris.Text({ snapshotText:get() })
 
 					task.defer(function()
-						local position = if snapshot.CFrame
-							then `({snapshot.CFrame.Position.X}, {snapshot.CFrame.Position.Y}, {snapshot.CFrame.Position.Z})`
+						local position = if snapshot.value
+							then `({snapshot.value.Position.X}, {snapshot.value.Position.Y}, {snapshot.value.Position.Z})`
 							else "❌ nil"
-						snapshotText:set(`{i}: {snapshot.timeStamp} - Position {position}`)
+						snapshotText:set(`{i}: {snapshot.t} - Position {position}`)
 					end)
 				end
 			end

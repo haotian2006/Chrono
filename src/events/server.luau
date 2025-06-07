@@ -151,16 +151,39 @@ local Queue: any = {
 Queue.Unreliable[0] = table.create(256)
 export type Transform = { Position: Vector3, RotationY: number }
 local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, RotationY: number } })
-	-- Read BLOCK: 18 bytes
-	local BLOCK_START = Read(18)
+	-- Read BLOCK: 16 bytes
+	local BLOCK_START = Read(16)
 	local Value = {} :: any
-	Value.timeStamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
+	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
+	local MantissaExponent = Encoded % 0x8000
+	if MantissaExponent == 0b0_11111_0000000000  then
+		if Encoded // 0x8000 == 1 then
+			Value.timeStamp = -math.huge
+		else
+			Value.timeStamp = math.huge
+		end
+	elseif MantissaExponent == 0b1_11111_0000000000   then
+		Value.timeStamp = 0 / 0
+	elseif MantissaExponent == 0b0_00000_0000000000   then
+		Value.timeStamp = 0
+	else
+		local Mantissa = MantissaExponent % 0x400
+		local Exponent = MantissaExponent // 0x400
+		local Fraction;
+		if Exponent == 0 then
+			Fraction = Mantissa / 0x400
+		else
+			Fraction = Mantissa / 0x800 + 0.5
+		end
+		local Result = math.ldexp(Fraction, Exponent - 14)
+		Value.timeStamp = if Encoded // 0x8000 == 1 then -Result else Result
+	end
 	Value.CFrame = {} :: any
-	local X = buffer.readf32(RecieveBuffer, BLOCK_START + 4)
-	local Y = buffer.readf32(RecieveBuffer, BLOCK_START + 8)
-	local Z = buffer.readf32(RecieveBuffer, BLOCK_START + 12)
+	local X = buffer.readf32(RecieveBuffer, BLOCK_START + 2)
+	local Y = buffer.readf32(RecieveBuffer, BLOCK_START + 6)
+	local Z = buffer.readf32(RecieveBuffer, BLOCK_START + 10)
 	Value.CFrame.Position = Vector3.new(X, Y, Z)
-	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 16)
+	Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 14)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
@@ -196,8 +219,30 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: 
 		Elements_1 += 1
 		local OFFSET_0 = Allocate(1)
 		buffer.writeu8(SendBuffer, OFFSET_0, Key_1)
-		local OFFSET_1 = Allocate(4)
-		buffer.writef32(SendBuffer, OFFSET_1, Element_1)
+		local OFFSET_1 = Allocate(2)
+		if Element_1 > 65504 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0b0_11111_0000000000)
+		elseif Element_1 < -65504 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0b1_11111_0000000000)
+		elseif Element_1 ~= Element_1 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0b1_11111_0000000001)
+		elseif Element_1 == 0 then
+			buffer.writeu16(SendBuffer, OFFSET_1, 0)
+		else
+			local float = Element_1
+			local Abosulte = math.abs(float)
+			local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
+			local RoundedValue = (Abosulte // Interval) * Interval
+			local Fraction, Exponent = math.frexp(RoundedValue)
+			Exponent += 14
+			local Mantissa = math.round(if Exponent <= 0
+				then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
+				else Fraction * 0x800) % 0x400
+			local Result = Mantissa
+				+ math.max(Exponent, 0) * 0x400
+				+ if float < 0 then 0x8000 else 0
+			buffer.writeu16(SendBuffer, OFFSET_1, Result)
+		end
 	end
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, Elements_1)
 	local Elements_1 = 0

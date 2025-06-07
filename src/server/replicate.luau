@@ -18,7 +18,7 @@ local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: {
 	[number]: {
 		player: Player,
-		snapshot: Snapshots.SnapshotInstance,
+		snapshot: Snapshots.CircularSnapshot<CFrame>,
 		clientLastTick: number?,
 	},
 }
@@ -101,7 +101,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 	playerIdMap[player] = id
 	idMap[id] = {
 		player = player,
-		snapshot = Snapshots.RegisterPlayer(player),
+		snapshot = Snapshots(CFrame.identity.Lerp),
 		clientLastTick = nil,
 	}
 	lastReplicatedTimes[id] = 0
@@ -140,7 +140,7 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 	end
 
 	data.clientLastTick = clientData.timeStamp
-	data.snapshot:PushAt(clientData.timeStamp, newCFrame :: CFrame)
+	data.snapshot:Push(clientData.timeStamp, newCFrame :: CFrame)
 end)
 
 local function UpdateTick(id: number, tickRate: number)
@@ -191,7 +191,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 		local latestSnapshot = data.snapshot:GetLatest()
 		if latestSnapshot then
-			CFrames[id] = latestSnapshot.CFrame
+			CFrames[id] = latestSnapshot.value
 		else
 			CFrames[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
@@ -222,7 +222,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 			if latestSnapshot then
 				table.insert(staged, humanoidRootPart)
-				table.insert(targets, latestSnapshot.CFrame)
+				table.insert(targets, latestSnapshot.value)
 			end
 		end
 	end
@@ -247,7 +247,7 @@ function Replication.GetLatestCFrame(player: Player): CFrame?
 
 	local latestSnapshot = data.snapshot:GetLatest()
 	if latestSnapshot then
-		return latestSnapshot.CFrame
+		return latestSnapshot.value
 	end
 
 	return nil

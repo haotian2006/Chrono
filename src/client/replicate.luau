@@ -12,7 +12,7 @@ local RenderCache = require(script.Parent.renderCache)
 
 local idMap = {} :: {
 	[number]: {
-		snapshot: Snapshots.SnapshotInstance,
+		snapshot: Snapshots.CircularSnapshot<CFrame>,
 		character: Model,
 		lastCFrame: CFrame?,
 	},
@@ -53,7 +53,7 @@ Events.ServerReplicateCFrame.On(function(serverData: { timeStamps: { [number]: n
 
 		--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
 		--same applies on the server as well of course.
-		entry.snapshot:PushAt(clientLastTicks[id], Networkables.DecodeYawCFrame(CFrame))
+		entry.snapshot:Push(clientLastTicks[id], Networkables.DecodeYawCFrame(CFrame))
 	end
 end)
 
@@ -69,7 +69,7 @@ local function PlayerAdded(player: Player, id: number)
 
 	initializedPlayers[player] = true
 
-	local registeredSnapshots = Snapshots.RegisterPlayer(player)
+	local registeredSnapshots = Snapshots(CFrame.identity.Lerp)
 
 	local initialRenderTime = os.clock()
 
@@ -84,7 +84,7 @@ local function PlayerAdded(player: Player, id: number)
 		initialCFrame = (characters[player] :: any).PrimaryPart.CFrame
 	end
 
-	registeredSnapshots:PushAt(initialRenderTime, initialCFrame)
+	registeredSnapshots:Push(initialRenderTime, initialCFrame)
 
 	idMap[id] = {
 		snapshot = registeredSnapshots,
