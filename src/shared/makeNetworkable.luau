@@ -84,7 +84,7 @@ end
 
 local function EncodeTime(time: number): number
 	-- return time - SERVER_TIME
-	return time % 256
+	return time
 	--return time
 end
 
