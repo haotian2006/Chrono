@@ -196,7 +196,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			CFrames[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
-		lastTicks[id] = if idMap[id].clientLastTick then idMap[id].clientLastTick :: any else os.clock()
+		lastTicks[id] = idMap[id].clientLastTick :: any
 	end
 
 	Events.ServerReplicateCFrame.FireAll({
