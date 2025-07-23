@@ -36,25 +36,30 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-function RegisterClientNPC(id: number, model: Model)
+function RegisterClientNPC(id: number, model: Model, npcType: string?)
 	if not idMap[id] then
 		warn("Tried to register NPC that hasn't been replicated yet")
 		return
 	end
 	idMap[id].character = model
+	if npcType then
+		idMap[id].npcType = npcType
+	end
 end
 
 Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
 	local clientLastTicks = serverData.timestamps
 	for id, serverTime in clientLastTicks do
 		if not idMap[id] then
+			local npcType = "DEFAULT" --will be overrided once replicated & configed on the client
 			idMap[id] = {
 				snapshot = Snapshots(CFrame.identity.Lerp),
 				character = nil,
 				lastCFrame = nil,
 				isNPC = true,
-				npcType = "DEFAULT",
+				npcType = npcType,
 			}
+			RenderCache.Add(id, true, npcType)
 		end
 
 		if not idMap[id].isNPC then
@@ -62,20 +67,16 @@ Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: n
 		end
 	end
 
-	local playerTicks = {}
-	for id, timestamp in clientLastTicks do
-		if not idMap[id].isNPC then
-			playerTicks[id] = timestamp
-		end
-	end
+	RenderCache.OnSnapshotUpdate(clientLastTicks)
 
-	RenderCache.OnSnapshotUpdate(playerTicks)
 	local cframes = serverData.cframes
 
 	for id, cframe in cframes do
 		local entry = idMap[id]
 		if not entry then
 			continue
+		elseif entry.isNPC and entry.npcType and not RenderCache.GetTargetRenderTime(id) then
+			RenderCache.Add(id, true, entry.npcType)
 		end
 
 		--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
@@ -162,27 +163,16 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			continue
 		end
 
-		if data.isNPC then
-			local latest = data.snapshot:GetLatest()
-			if latest then
-				data.lastCFrame = latest.value
+		local targetRenderTime = RenderCache.GetTargetRenderTime(id)
+		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 
-				if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
-					humanoidRootPart.CFrame = data.lastCFrame :: CFrame
-				end
-			end
-		else
-			local targetRenderTime = RenderCache.GetTargetRenderTime(id)
-			local targetCFrame = data.snapshot:GetAt(targetRenderTime)
+		if targetCFrame then
+			data.lastCFrame = targetCFrame
 
-			if targetCFrame then
-				data.lastCFrame = targetCFrame
+			-- make sure it isn't welded to anything else (e.g. being carried)
 
-				-- make sure it isn't welded to anything else (e.g. being carried)
-
-				if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
-					humanoidRootPart.CFrame = data.lastCFrame :: CFrame
-				end
+			if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
+				humanoidRootPart.CFrame = targetCFrame
 			end
 		end
 	end

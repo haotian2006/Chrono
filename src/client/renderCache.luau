@@ -12,6 +12,9 @@ local clientClockInfo = {} :: {
 	},
 }
 
+local isNPCMap = {} :: { [number]: boolean }
+local npcTypeMap = {} :: { [number]: string }
+
 local RenderCache = {}
 
 function RenderCache.Init(dependencies: {
@@ -20,6 +23,17 @@ function RenderCache.Init(dependencies: {
 })
 	playerTickRates = dependencies.playerTickRates
 	BufferTracker = dependencies.bufferTracker
+end
+
+local function GetBuffer(id: number): number
+	if isNPCMap[id] then
+		local npcType = npcTypeMap[id] or "DEFAULT"
+		local npcConfig = Config.NPC_TYPES[npcType]
+
+		return npcConfig and npcConfig.BUFFER or 0
+	else
+		return BufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+	end
 end
 
 function RenderCache.OnSnapshotUpdate(snapshot: { [number]: number })
@@ -42,7 +56,7 @@ function RenderCache.OnSnapshotUpdate(snapshot: { [number]: number })
 			info.lastClockDuration = now
 
 			if not info.renderAt then
-				local delay = BufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
+				local delay = GetBuffer(id)
 				info.renderAt = currentSendTime - delay
 			end
 		end
@@ -53,15 +67,14 @@ function RenderCache.Update(deltaTime: number)
 	local now = os.clock()
 
 	for id, info in clientClockInfo do
-		local tickRate = playerTickRates[id] or Config.TICK_RATE
-		local delay = BufferTracker.GetBuffer(id, tickRate)
+		local delay = GetBuffer(id)
 
 		--predict the current server time based on the last known tick and time difference
 		--advance the render at by the delta time and calculate error from the dynamic delay
 		--snap if the error is too big, fall slightly behind to correct overshoot and speed up to catch uip
 
 		local estimatedServerTime = info.lastClockAt + (now - info.lastClockDuration)
-		local renderAt = (info.renderAt or 0) + deltaTime
+		local renderAt = (info.renderAt or (estimatedServerTime - delay)) + deltaTime
 
 		local renderTimeError = delay - (estimatedServerTime - renderAt)
 
@@ -95,7 +108,7 @@ function RenderCache.GetEstimatedServerTime(id: number): number
 	return info.lastClockAt + (os.clock() - info.lastClockDuration)
 end
 
-function RenderCache.Add(id: number)
+function RenderCache.Add(id: number, isNPC: boolean?, npcType: string?)
 	if not clientClockInfo[id] then
 		clientClockInfo[id] = {
 			lastClockAt = 0,
@@ -103,10 +116,16 @@ function RenderCache.Add(id: number)
 			renderAt = nil,
 		}
 	end
+	isNPCMap[id] = isNPC or false
+	if isNPC then
+		npcTypeMap[id] = npcType or "DEFAULT"
+	end
 end
 
 function RenderCache.Remove(id: number)
 	clientClockInfo[id] = nil
+	isNPCMap[id] = nil
+	npcTypeMap[id] = nil
 end
 
 return RenderCache
