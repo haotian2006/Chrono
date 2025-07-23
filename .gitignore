@@ -6,3 +6,5 @@
 /*.rbxl.lock
 /.vscode/settings.json
 .vscode/settings.json
+
+sourcemap.json
