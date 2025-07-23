@@ -150,28 +150,28 @@ local Queue: any = {
 
 Queue.Unreliable[0] = table.create(256)
 export type Transform = { Position: Vector3, RotationY: number }
-local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: { Position: Vector3, RotationY: number } })
+local function ReadEVENT_ClientReplicateCFrame(): ({ timestamp: number, cframe: { Position: Vector3, RotationY: number } })
 	-- Read BLOCK: 18 bytes
 	local BLOCK_START = Read(18)
 	local Value = {} :: any
-	Value.timeStamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
-	Value.CFrame = {} :: any
+	Value.timestamp = buffer.readf32(RecieveBuffer, BLOCK_START + 0)
+	Value.cframe = {} :: any
 	local X = buffer.readf32(RecieveBuffer, BLOCK_START + 4)
 	local Y = buffer.readf32(RecieveBuffer, BLOCK_START + 8)
 	local Z = buffer.readf32(RecieveBuffer, BLOCK_START + 12)
-	Value.CFrame.Position = Vector3.new(X, Y, Z)
+	Value.cframe.Position = Vector3.new(X, Y, Z)
 	local Encoded = buffer.readu16(RecieveBuffer, BLOCK_START + 16)
 	local MantissaExponent = Encoded % 0x8000
 	if MantissaExponent == 0b0_11111_0000000000  then
 		if Encoded // 0x8000 == 1 then
-			Value.CFrame.RotationY = -math.huge
+			Value.cframe.RotationY = -math.huge
 		else
-			Value.CFrame.RotationY = math.huge
+			Value.cframe.RotationY = math.huge
 		end
 	elseif MantissaExponent == 0b1_11111_0000000000   then
-		Value.CFrame.RotationY = 0 / 0
+		Value.cframe.RotationY = 0 / 0
 	elseif MantissaExponent == 0b0_00000_0000000000   then
-		Value.CFrame.RotationY = 0
+		Value.cframe.RotationY = 0
 	else
 		local Mantissa = MantissaExponent % 0x400
 		local Exponent = MantissaExponent // 0x400
@@ -182,7 +182,7 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ timeStamp: number, CFrame: 
 			Fraction = Mantissa / 0x800 + 0.5
 		end
 		local Result = math.ldexp(Fraction, Exponent - 14)
-		Value.CFrame.RotationY = if Encoded // 0x8000 == 1 then -Result else Result
+		Value.cframe.RotationY = if Encoded // 0x8000 == 1 then -Result else Result
 	end
 	return Value
 end
@@ -384,7 +384,7 @@ Unreliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer, Instan
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 0 then
-			local Value: { timeStamp: number, CFrame: { Position: Vector3, RotationY: number } } = ReadEVENT_ClientReplicateCFrame()
+			local Value: { timestamp: number, cframe: { Position: Vector3, RotationY: number } } = ReadEVENT_ClientReplicateCFrame()
 			if Events.Unreliable[0] ~= nil then
 				Events.Unreliable[0](Player, Value)
 			end
@@ -397,7 +397,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		On = function(Listener: (Player: Player, Value: { timeStamp: number, CFrame: { Position: Vector3, RotationY: number } }) -> ()): () -> ()
+		On = function(Listener: (Player: Player, Value: { timestamp: number, cframe: { Position: Vector3, RotationY: number } }) -> ()): () -> ()
 			Events.Unreliable[0] = Listener
 			return function (): ()
 				Events.Unreliable[0] = nil

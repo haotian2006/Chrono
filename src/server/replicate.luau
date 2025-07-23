@@ -7,7 +7,7 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
-local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
+--local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
@@ -127,10 +127,10 @@ end)
 
 Events.ClientReplicateCFrame.On(function(player, clientData)
 	local newCFrame: CFrame?
-	if clientData.CFrame == nil then
+	if clientData.cframe == nil then
 		newCFrame = nil
 	else
-		newCFrame = Networkables.DecodeYawCFrame(clientData.CFrame)
+		newCFrame = Networkables.DecodeYawCFrame(clientData.cframe)
 	end
 
 	local id = playerIdMap[player]
@@ -139,8 +139,8 @@ Events.ClientReplicateCFrame.On(function(player, clientData)
 		return
 	end
 
-	data.clientLastTick = clientData.timeStamp
-	data.snapshot:Push(clientData.timeStamp, newCFrame :: CFrame)
+	data.clientLastTick = clientData.timestamp
+	data.snapshot:Push(clientData.timestamp, newCFrame :: CFrame)
 end)
 
 local function UpdateTick(id: number, tickRate: number)

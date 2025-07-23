@@ -11,8 +11,8 @@ event ClientReplicateCFrame {
     type: Unreliable,
     call: SingleSync,
     data: struct {
-        timeStamp: f32,
-        CFrame: Transform
+        timestamp: f32,
+        cframe: Transform
     }
 }
 

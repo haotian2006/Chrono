@@ -177,8 +177,8 @@ RunService.PostSimulation:Connect(function()
 	-- local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
 	local networkable = Networkables.MakeYawNetworkable(currentCFrame)
 	Events.ClientReplicateCFrame.Fire({
-		timeStamp = os.clock(),
-		CFrame = networkable,
+		timestamp = os.clock(),
+		cframe = networkable,
 	})
 end)
 

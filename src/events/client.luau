@@ -154,25 +154,25 @@ Queue.Reliable[1] = table.create(256)
 Events.Reliable[2] = {}
 Queue.Reliable[2] = table.create(256)
 export type Transform = { Position: Vector3, RotationY: number }
-local function WriteEVENT_ClientReplicateCFrame(Value: { timeStamp: number, CFrame: { Position: Vector3, RotationY: number } }): ()
+local function WriteEVENT_ClientReplicateCFrame(Value: { timestamp: number, cframe: { Position: Vector3, RotationY: number } }): ()
 	-- Allocate BLOCK: 19 bytes
 	local BLOCK_START = Allocate(19)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 0)
-	buffer.writef32(SendBuffer, BLOCK_START + 1, Value.timeStamp)
-	local Vector = Value.CFrame.Position
+	buffer.writef32(SendBuffer, BLOCK_START + 1, Value.timestamp)
+	local Vector = Value.cframe.Position
 	buffer.writef32(SendBuffer, BLOCK_START + 5, Vector.X)
 	buffer.writef32(SendBuffer, BLOCK_START + 9, Vector.Y)
 	buffer.writef32(SendBuffer, BLOCK_START + 13, Vector.Z)
-	if Value.CFrame.RotationY > 65504 then
+	if Value.cframe.RotationY > 65504 then
 		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b0_11111_0000000000)
-	elseif Value.CFrame.RotationY < -65504 then
+	elseif Value.cframe.RotationY < -65504 then
 		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b1_11111_0000000000)
-	elseif Value.CFrame.RotationY ~= Value.CFrame.RotationY then
+	elseif Value.cframe.RotationY ~= Value.cframe.RotationY then
 		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0b1_11111_0000000001)
-	elseif Value.CFrame.RotationY == 0 then
+	elseif Value.cframe.RotationY == 0 then
 		buffer.writeu16(SendBuffer, BLOCK_START + 17, 0)
 	else
-		local float = Value.CFrame.RotationY
+		local float = Value.cframe.RotationY
 		local Abosulte = math.abs(float)
 		local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)
 		local RoundedValue = (Abosulte // Interval) * Interval
@@ -413,7 +413,7 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	ClientReplicateCFrame = {
-		Fire = function(Value: { timeStamp: number, CFrame: { Position: Vector3, RotationY: number } }): ()
+		Fire = function(Value: { timestamp: number, cframe: { Position: Vector3, RotationY: number } }): ()
 			local Previous = Save()
 			Load()
 			WriteEVENT_ClientReplicateCFrame(Value)
