@@ -11,17 +11,18 @@ local Events = require(ReplicatedStorage.Events.server)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
-local Replication = {}
-
 local idStack = {} :: { number }
 local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: {
 	[number]: {
-		player: Player,
+		player: Player?,
 		snapshot: Snapshots.CircularSnapshot<CFrame>,
 		clientLastTick: number?,
+		serverOwned: boolean?,
+		npcType: string?,
 	},
 }
+
 local lastReplicatedTimes = {} :: { [number]: number }
 local playerTickRates = {} :: { [number]: number }
 local replicators = {} :: { [number]: Model }
@@ -45,6 +46,11 @@ end
 
 local function ReturnID(id: number)
 	table.insert(idStack, id)
+end
+
+local function GetNPCConfig(npcType: string?): any
+	npcType = npcType or "DEFAULT"
+	return Config.NPC_TYPES[npcType] or Config.NPC_TYPES.DEFAULT
 end
 
 local function OnCharacterAdded(player: Player, character: Model, id: number)
@@ -103,6 +109,12 @@ Players.PlayerAdded:Connect(function(player: Player)
 		player = player,
 		snapshot = Snapshots(CFrame.identity.Lerp),
 		clientLastTick = nil,
+		--clientLastTick:
+		--players: last tick received from that client
+		--NPCs: last tick generated on the server (acts as serverLastTick)
+
+		serverOwned = false,
+		npcType = nil,
 	}
 	lastReplicatedTimes[id] = 0
 
@@ -150,14 +162,18 @@ local function UpdateTick(id: number, tickRate: number)
 	})
 end
 
-local function GetTickInterval(character: Model, id: number): number
+local function GetTickInterval(character: Model?, id: number): number
+	local data = idMap[id]
+	if data and data.serverOwned then
+		return GetNPCConfig(data.npcType).TICK_RATE
+	end
+
 	local baseTick = Config.TICK_RATE
 	if not character then
 		return baseTick
 	end
 
 	local nearbyPlayers = Grid.GetNearbyEntities(character, Config.PROXIMITY, { "player" })
-
 	local newTickRate = if #nearbyPlayers > 1 then baseTick else baseTick * 2
 
 	if newTickRate ~= playerTickRates[id] then
@@ -175,10 +191,16 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	local lastTicks = {}
 
 	for id, data in idMap do
-		local character = data.player.Character
-		if not character or not character:FindFirstChild("HumanoidRootPart") or not idMap[id].clientLastTick then
+		local character = data.player and data.player.Character or nil
+		local isNPC = data.serverOwned == true
+
+		if
+			not isNPC
+			and (not character or not character:FindFirstChild("HumanoidRootPart") or not data.clientLastTick)
+		then
 			continue
 		end
+
 		local tickInterval = GetTickInterval(character, id)
 
 		local now = os.clock()
@@ -192,11 +214,11 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		local latestSnapshot = data.snapshot:GetLatest()
 		if latestSnapshot then
 			cframes[id] = latestSnapshot.value
-		else
+		elseif character and character:FindFirstChild("HumanoidRootPart") then
 			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
-		lastTicks[id] = idMap[id].clientLastTick :: any
+		lastTicks[id] = data.clientLastTick or now --players: client tick, NPCs: server tick aka now
 	end
 
 	Events.ServerReplicateCFrame.FireAll({
@@ -234,7 +256,7 @@ end)
 
 --Exposes a function for other scripts to get the most up to date CFrame of a player
 --for my personal usecase, I am using it to bypass the physics buffer for hitbox calculation
-function Replication.GetLatestCFrame(player: Player): CFrame?
+local function GetLatestCFrame(player: Player): CFrame?
 	local id = playerIdMap[player]
 	if not id then
 		return nil
@@ -253,4 +275,49 @@ function Replication.GetLatestCFrame(player: Player): CFrame?
 	return nil
 end
 
-return Replication
+local function RegisterNPC(model: Model?, npcType: string?): number
+	local id = GetNextID()
+
+	local npcConfig = GetNPCConfig(npcType)
+
+	idMap[id] = {
+		player = nil,
+		snapshot = Snapshots(CFrame.identity.Lerp),
+		clientLastTick = os.clock(),
+		serverOwned = true,
+		npcType = npcType or "DEFAULT",
+	}
+	lastReplicatedTimes[id] = 0
+
+	playerTickRates[id] = npcConfig.TICK_RATE
+	UpdateTick(id, playerTickRates[id])
+
+	if model then
+		model:SetAttribute("NPC_ID", id)
+		Grid.AddEntity(model, "npc")
+
+		if npcConfig.DISABLE_DEFAULT_REPLICATION then
+			local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if hrp then
+				hrp.Anchored = true
+			end
+		end
+	end
+
+	return id
+end
+
+local function PushNPCTransform(id: number, cframe: CFrame)
+	local data = idMap[id]
+	if data and data.serverOwned then
+		local now = os.clock()
+		data.snapshot:Push(now, cframe)
+		data.clientLastTick = now
+	end
+end
+
+return {
+	GetLatestCFrame = GetLatestCFrame,
+	RegisterNPC = RegisterNPC,
+	PushNPCTransform = PushNPCTransform,
+}
