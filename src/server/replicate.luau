@@ -254,10 +254,23 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	end
 end)
 
---Exposes a function for other scripts to get the most up to date CFrame of a player
+--Exposes a function for other scripts to get the most up to date CFrame of a player or npc
 --for my personal usecase, I am using it to bypass the physics buffer for hitbox calculation
-local function GetLatestCFrame(player: Player): CFrame?
-	local id = playerIdMap[player]
+
+--Since npc visuals is decoupled from the logic, the npc is never moved on the server
+--PushNPCTransform doesnt move the rig, it updates the snapshots and fires the clients to interpolate the rig
+--if someone wants the rig to actually move, they can just cframe the rig themselves, but that will be double replicated
+local function GetLatestCFrame(target: Player | number): CFrame?
+	local id: number?
+
+	if typeof(target) == "Instance" and target:IsA("Player") then
+		id = playerIdMap[target]
+	elseif typeof(target) == "number" then
+		id = target
+	else
+		return nil
+	end
+
 	if not id then
 		return nil
 	end
@@ -295,13 +308,6 @@ local function RegisterNPC(model: Model?, npcType: string?): number
 	if model then
 		model:SetAttribute("NPC_ID", id)
 		Grid.AddEntity(model, "npc")
-
-		if npcConfig.DISABLE_DEFAULT_REPLICATION then
-			local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart?
-			if hrp then
-				hrp.Anchored = true
-			end
-		end
 	end
 
 	return id

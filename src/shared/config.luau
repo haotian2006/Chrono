@@ -12,7 +12,6 @@ return table.freeze({
 		DEFAULT = table.freeze({
 			TICK_RATE = 1 / 30,
 			BUFFER = 0.1,
-			DISABLE_DEFAULT_REPLICATION = false,
 		}),
 	}),
 })
