@@ -171,7 +171,7 @@ end
 RunService.PostSimulation:Connect(function(deltaTime)
 	Grid.UpdateGrid()
 
-	local CFrames = {}
+	local cframes = {}
 	local lastTicks = {}
 
 	for id, data in idMap do
@@ -191,9 +191,9 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 		local latestSnapshot = data.snapshot:GetLatest()
 		if latestSnapshot then
-			CFrames[id] = latestSnapshot.value
+			cframes[id] = latestSnapshot.value
 		else
-			CFrames[id] = ((character :: any).HumanoidRootPart :: any).CFrame
+			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
 
 		lastTicks[id] = idMap[id].clientLastTick :: any
@@ -201,8 +201,8 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 	Events.ServerReplicateCFrame.FireAll({
 		--using helper function that converts an entire table of CFrames to networkable form
-		CFrames = Networkables.NetworkableYawCFrameTable(CFrames),
-		timeStamps = lastTicks,
+		cframes = Networkables.NetworkableYawCFrameTable(cframes),
+		timestamps = lastTicks,
 	})
 
 	if not Config.DISABLE_DEFAULT_REPLICATION then

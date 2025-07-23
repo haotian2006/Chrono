@@ -19,11 +19,11 @@ else
 	script:SetAttribute("ServerTime", SERVER_TIME)
 end
 
-local function MakeNetworkable(CFrame: CFrame): NetworkableCFrame
-	local position = CFrame.Position
+local function MakeNetworkable(cframe: CFrame): NetworkableCFrame
+	local position = cframe.Position
 	--AxisAngles very simple way to think about quaternions
 	--can convert into quaternions by multiplying sine of the half angle
-	local axis, angle = CFrame:ToAxisAngle()
+	local axis, angle = cframe:ToAxisAngle()
 
 	local halfAngle = angle * 0.5
 	local sinHalf = math.sin(halfAngle)

@@ -36,16 +36,16 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-Events.ServerReplicateCFrame.On(function(serverData: { timeStamps: { [number]: number }, CFrames: { [number]: any } })
-	local clientLastTicks = serverData.timeStamps
+Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
+	local clientLastTicks = serverData.timestamps
 	for id, serverTime in clientLastTicks do
 		bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
 	end
 
 	RenderCache.OnSnapshotUpdate(clientLastTicks)
-	local CFrames = serverData.CFrames
+	local cframes = serverData.cframes
 
-	for id, CFrame in CFrames do
+	for id, CFrame in cframes do
 		local entry = idMap[id]
 		if not entry then
 			continue
@@ -166,8 +166,9 @@ RunService.PostSimulation:Connect(function()
 	end
 
 	local currentCFrame = humanoidRootPart.CFrame
-	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
-		or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
+	--TODO: don't send cframe when player doesn't move
+	--local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
+	--or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
 
 	lastSentCFrame = currentCFrame
 

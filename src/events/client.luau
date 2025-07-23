@@ -188,20 +188,20 @@ local function WriteEVENT_ClientReplicateCFrame(Value: { timestamp: number, cfra
 	end
 end
 
-local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} })
+local function ReadEVENT_ServerReplicateCFrame(): ({ timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} })
 	-- Read BLOCK: 4 bytes
 	local BLOCK_START = Read(4)
 	local Value = {} :: any
-	Value.timeStamps = {}
+	Value.timestamps = {}
 	local Elements_1 = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
 	for _ = 1, Elements_1 do
 		local OFFSET_0 = Read(1)
 		local Key_1 = buffer.readu8(RecieveBuffer, OFFSET_0)
 		local OFFSET_1 = Read(4)
 		local Element_1 = buffer.readf32(RecieveBuffer, OFFSET_1)
-		Value.timeStamps[Key_1] = Element_1
+		Value.timestamps[Key_1] = Element_1
 	end
-	Value.CFrames = {}
+	Value.cframes = {}
 	Elements_1 = buffer.readu16(RecieveBuffer, BLOCK_START + 2)
 	for _ = 1, Elements_1 do
 		local OFFSET_0 = Read(1)
@@ -239,7 +239,7 @@ local function ReadEVENT_ServerReplicateCFrame(): ({ timeStamps: {[number]: numb
 			local Result = math.ldexp(Fraction, Exponent - 14)
 			Element_1.RotationY = if Encoded // 0x8000 == 1 then -Result else Result
 		end
-		Value.CFrames[Key_1] = Element_1
+		Value.cframes[Key_1] = Element_1
 	end
 	return Value
 end
@@ -400,7 +400,7 @@ Unreliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
 		if Index == 1 then
-			local Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} } = ReadEVENT_ServerReplicateCFrame()
+			local Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} } = ReadEVENT_ServerReplicateCFrame()
 			if Events.Unreliable[1] ~= nil then
 				Events.Unreliable[1](Value)
 			end
@@ -424,7 +424,7 @@ local Returns = table.freeze({
 		end
 	},
 	ServerReplicateCFrame = {
-		On = function(Listener: (Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }) -> ()): () -> ()
+		On = function(Listener: (Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} }) -> ()): () -> ()
 			Events.Unreliable[1] = Listener
 			return function (): ()
 				Events.Unreliable[1] = nil

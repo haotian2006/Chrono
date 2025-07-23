@@ -21,8 +21,8 @@ event ServerReplicateCFrame {
     type: Unreliable,
     call: SingleSync,
     data: struct {
-        timeStamps: map {[u8]: f32},
-        CFrames: map {[u8]: Transform},
+        timestamps: map {[u8]: f32},
+        cframes: map {[u8]: Transform},
     }
 }
 

@@ -187,12 +187,12 @@ local function ReadEVENT_ClientReplicateCFrame(): ({ timestamp: number, cframe: 
 	return Value
 end
 
-local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
+local function WriteEVENT_ServerReplicateCFrame(Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} }): ()
 	-- Allocate BLOCK: 5 bytes
 	local BLOCK_START = Allocate(5)
 	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
 	local Elements_1 = 0
-	for Key_1, Element_1 in Value.timeStamps do
+	for Key_1, Element_1 in Value.timestamps do
 		Elements_1 += 1
 		local OFFSET_0 = Allocate(1)
 		buffer.writeu8(SendBuffer, OFFSET_0, Key_1)
@@ -201,7 +201,7 @@ local function WriteEVENT_ServerReplicateCFrame(Value: { timeStamps: {[number]: 
 	end
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, Elements_1)
 	local Elements_1 = 0
-	for Key_1, Element_1 in Value.CFrames do
+	for Key_1, Element_1 in Value.cframes do
 		Elements_1 += 1
 		local OFFSET_0 = Allocate(1)
 		buffer.writeu8(SendBuffer, OFFSET_0, Key_1)
@@ -405,21 +405,21 @@ local Returns = table.freeze({
 		end
 	},
 	ServerReplicateCFrame = {
-		Fire = function(Player: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
+		Fire = function(Player: Player, Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireClient(Player, Buffer, SendInstances)
 		end,
-		FireAll = function(Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
+		FireAll = function(Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
 			buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
 			Unreliable:FireAllClients(Buffer, SendInstances)
 		end,
-		FireList = function(List: {Player}, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
+		FireList = function(List: {Player}, Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
@@ -428,7 +428,7 @@ local Returns = table.freeze({
 				Unreliable:FireClient(Player, Buffer, SendInstances)
 			end
 		end,
-		FireExcept = function(Except: Player, Value: { timeStamps: {[number]: number}, CFrames: {[number]: { Position: Vector3, RotationY: number }} }): ()
+		FireExcept = function(Except: Player, Value: { timestamps: {[number]: number}, cframes: {[number]: { Position: Vector3, RotationY: number }} }): ()
 			Load()
 			WriteEVENT_ServerReplicateCFrame(Value)
 			local Buffer = buffer.create(SendCursor)
