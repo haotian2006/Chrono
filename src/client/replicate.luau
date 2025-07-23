@@ -36,7 +36,7 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-function RegisterClientNPC(id: number, model: Model, npcType: string?)
+local function RegisterClientNPC(id: number, model: Model, npcType: string?)
 	if not idMap[id] then
 		warn("Tried to register NPC that hasn't been replicated yet")
 		return
