@@ -6,15 +6,16 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
-local ClientRig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 local RenderCache = require(script.Parent.renderCache)
 
 local idMap = {} :: {
 	[number]: {
 		snapshot: Snapshots.CircularSnapshot<CFrame>,
-		character: Model,
+		character: Model?,
 		lastCFrame: CFrame?,
+		isNPC: boolean?,
+		npcType: string?,
 	},
 }
 
@@ -29,23 +30,49 @@ RenderCache.Init({
 	bufferTracker = bufferTracker,
 })
 
-local networkedCFrame = nil
 local playerNetworkId = 300
 
 Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
+function RegisterClientNPC(id: number, model: Model)
+	if not idMap[id] then
+		warn("Tried to register NPC that hasn't been replicated yet")
+		return
+	end
+	idMap[id].character = model
+end
+
 Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
 	local clientLastTicks = serverData.timestamps
 	for id, serverTime in clientLastTicks do
-		bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
+		if not idMap[id] then
+			idMap[id] = {
+				snapshot = Snapshots(CFrame.identity.Lerp),
+				character = nil,
+				lastCFrame = nil,
+				isNPC = true,
+				npcType = "DEFAULT",
+			}
+		end
+
+		if not idMap[id].isNPC then
+			bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
+		end
 	end
 
-	RenderCache.OnSnapshotUpdate(clientLastTicks)
+	local playerTicks = {}
+	for id, timestamp in clientLastTicks do
+		if not idMap[id].isNPC then
+			playerTicks[id] = timestamp
+		end
+	end
+
+	RenderCache.OnSnapshotUpdate(playerTicks)
 	local cframes = serverData.cframes
 
-	for id, CFrame in cframes do
+	for id, cframe in cframes do
 		local entry = idMap[id]
 		if not entry then
 			continue
@@ -53,7 +80,7 @@ Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: n
 
 		--since CFrames are received in the networkable format, I have to decode it to be actual CFrames. It is nicely done because of the roblox CFrame.new overload for quaternions.
 		--same applies on the server as well of course.
-		entry.snapshot:Push(clientLastTicks[id], Networkables.DecodeYawCFrame(CFrame))
+		entry.snapshot:Push(clientLastTicks[id], Networkables.DecodeYawCFrame(cframe))
 	end
 end)
 
@@ -91,7 +118,6 @@ local function PlayerAdded(player: Player, id: number)
 		character = characters[player],
 		lastCFrame = initialCFrame,
 	}
-	networkedCFrame = Networkables.MakeYawNetworkable(initialCFrame)
 
 	RenderCache.Add(id)
 
@@ -136,15 +162,27 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			continue
 		end
 
-		local targetRenderTime = RenderCache.GetTargetRenderTime(id)
-		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
+		if data.isNPC then
+			local latest = data.snapshot:GetLatest()
+			if latest then
+				data.lastCFrame = latest.value
 
-		if targetCFrame then
-			data.lastCFrame = targetCFrame
+				if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
+					humanoidRootPart.CFrame = data.lastCFrame :: CFrame
+				end
+			end
+		else
+			local targetRenderTime = RenderCache.GetTargetRenderTime(id)
+			local targetCFrame = data.snapshot:GetAt(targetRenderTime)
 
-			-- make sure it isn't welded to anything else (e.g. being carried)
-			if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
-				humanoidRootPart.CFrame = data.lastCFrame :: CFrame
+			if targetCFrame then
+				data.lastCFrame = targetCFrame
+
+				-- make sure it isn't welded to anything else (e.g. being carried)
+
+				if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
+					humanoidRootPart.CFrame = data.lastCFrame :: CFrame
+				end
 			end
 		end
 	end
@@ -188,6 +226,7 @@ return {
 	playerTickRates = playerTickRates,
 	BufferTracker = bufferTracker,
 
+	RegisterClientNPC = RegisterClientNPC,
 	GetAllNetworkIds = function()
 		local ids = {}
 		for id, _ in idMap do
