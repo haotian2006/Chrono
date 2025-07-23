@@ -148,7 +148,7 @@ Events.InitializeExistingPlayers.On(function(data)
 end)
 
 local lastSent = os.clock()
-local lastSentCFrame = CFrame.identity
+--local lastSentCFrame = CFrame.identity
 
 RunService.PreRender:Connect(function(deltaTime: number)
 	RenderCache.Update(deltaTime)
@@ -198,7 +198,7 @@ RunService.PostSimulation:Connect(function()
 	--local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
 	--or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
 
-	lastSentCFrame = currentCFrame
+	--lastSentCFrame = currentCFrame
 
 	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 	-- this allows for much nicer compression since I am using quaternions
