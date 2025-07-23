@@ -36,17 +36,6 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-local function RegisterClientNPC(id: number, model: Model, npcType: string?)
-	if not idMap[id] then
-		warn("Tried to register NPC that hasn't been replicated yet")
-		return
-	end
-	idMap[id].character = model
-	if npcType then
-		idMap[id].npcType = npcType
-	end
-end
-
 Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
 	local clientLastTicks = serverData.timestamps
 	for id, serverTime in clientLastTicks do
@@ -84,6 +73,17 @@ Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: n
 		entry.snapshot:Push(clientLastTicks[id], Networkables.DecodeYawCFrame(cframe))
 	end
 end)
+
+local function RegisterClientNPC(id: number, model: Model, npcType: string?)
+	if not idMap[id] then
+		warn("Tried to register NPC that hasn't been replicated yet")
+		return
+	end
+	idMap[id].character = model
+	if npcType then
+		idMap[id].npcType = npcType
+	end
+end
 
 local function PlayerAdded(player: Player, id: number)
 	if initializedPlayers[player] then
