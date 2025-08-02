@@ -10,12 +10,15 @@ local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 local RenderCache = require(script.Parent.renderCache)
 
 local MAX_UNRELIABLE_BYTES = 900
-local SNAPSHOT_SIZE = 19
+local SNAPSHOT_SIZE = 18
 local HEADER_SIZE = 2
 local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
 local outgoingSnapshots = {} :: { { timestamp: number, cframe: { Position: Vector3, RotationY: number } } }
 local snapshotBuffer = buffer.create(MAX_UNRELIABLE_BYTES)
+
+local ClientReplicateCFrame = ReplicatedStorage:WaitForChild("ClientReplicateCFrame")
+local ServerReplicateCFrame = ReplicatedStorage:WaitForChild("ServerReplicateCFrame")
 
 local idMap = {} :: {
 	[number]: {
@@ -70,18 +73,18 @@ local function PackF16(float: number): number
 end
 
 local function PackSnapshotData(
-	b: buffer,
+	buff: buffer,
 	offset: number,
 	timestamp: number,
 	cframe: { Position: Vector3, RotationY: number }
 )
-	buffer.writef32(b, offset + 0, timestamp)
+	buffer.writef32(buff, offset + 0, timestamp)
 
-	buffer.writef32(b, offset + 4, cframe.Position.X)
-	buffer.writef32(b, offset + 8, cframe.Position.Y)
-	buffer.writef32(b, offset + 12, cframe.Position.Z)
+	buffer.writef32(buff, offset + 4, cframe.Position.X)
+	buffer.writef32(buff, offset + 8, cframe.Position.Y)
+	buffer.writef32(buff, offset + 12, cframe.Position.Z)
 
-	buffer.writeu16(b, offset + 16, PackF16(cframe.RotationY))
+	buffer.writeu16(buff, offset + 16, PackF16(cframe.RotationY))
 end
 
 local function FlushSnapshots()
@@ -90,9 +93,6 @@ local function FlushSnapshots()
 		return
 	end
 
-	local totalSize = count * SNAPSHOT_SIZE
-	local snapshotBuffer = buffer.create(totalSize)
-
 	local offset = 0
 	for i = 1, count do
 		local snapshot = outgoingSnapshots[i]
@@ -100,7 +100,7 @@ local function FlushSnapshots()
 		offset += SNAPSHOT_SIZE
 	end
 
-	--FIRE SERVERRR
+	ClientReplicateCFrame:FireServer(snapshotBuffer, count)
 
 	table.clear(outgoingSnapshots)
 end
