@@ -100,7 +100,7 @@ local function FlushSnapshots()
 		offset += SNAPSHOT_SIZE
 	end
 
-	ClientReplicateCFrame:FireServer(snapshotBuffer)
+	ClientReplicateCFrame:FireServer(snapshotBuffer, count)
 
 	table.clear(outgoingSnapshots)
 end
