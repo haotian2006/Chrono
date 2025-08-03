@@ -15,9 +15,7 @@ local clientClockInfo = {} :: {
 local isNPCMap = {} :: { [number]: boolean }
 local npcTypeMap = {} :: { [number]: string }
 
-local RenderCache = {}
-
-function RenderCache.Init(dependencies: {
+local function Init(dependencies: {
 	playerTickRates: { [number]: number },
 	bufferTracker: any,
 })
@@ -36,7 +34,7 @@ local function GetBuffer(id: number): number
 	end
 end
 
-function RenderCache.OnSnapshotUpdate(snapshot: { [number]: number })
+local function OnSnapshotUpdate(snapshot: { [number]: number })
 	local now = os.clock()
 
 	for id, currentSendTime in snapshot do
@@ -63,7 +61,7 @@ function RenderCache.OnSnapshotUpdate(snapshot: { [number]: number })
 	end
 end
 
-function RenderCache.Update(deltaTime: number)
+local function Update(deltaTime: number)
 	local now = os.clock()
 
 	for id, info in clientClockInfo do
@@ -90,7 +88,7 @@ function RenderCache.Update(deltaTime: number)
 	end
 end
 
-function RenderCache.GetTargetRenderTime(id: number): number
+local function GetTargetRenderTime(id: number): number
 	local info = clientClockInfo[id]
 	if not info or not info.renderAt then
 		warn(`RenderCache: No render time for network ID {id}`)
@@ -99,7 +97,7 @@ function RenderCache.GetTargetRenderTime(id: number): number
 	return info.renderAt
 end
 
-function RenderCache.GetEstimatedServerTime(id: number): number
+local function GetEstimatedServerTime(id: number): number
 	local info = clientClockInfo[id]
 	if not info then
 		warn(`RenderCache: No estimated server time for network ID {id}`)
@@ -108,7 +106,7 @@ function RenderCache.GetEstimatedServerTime(id: number): number
 	return info.lastClockAt + (os.clock() - info.lastClockDuration)
 end
 
-function RenderCache.Add(id: number, isNPC: boolean?, npcType: string?)
+local function Add(id: number, isNPC: boolean?, npcType: string?)
 	if not clientClockInfo[id] then
 		clientClockInfo[id] = {
 			lastClockAt = 0,
@@ -122,10 +120,19 @@ function RenderCache.Add(id: number, isNPC: boolean?, npcType: string?)
 	end
 end
 
-function RenderCache.Remove(id: number)
+local function Remove(id: number)
 	clientClockInfo[id] = nil
 	isNPCMap[id] = nil
 	npcTypeMap[id] = nil
 end
 
-return RenderCache
+return {
+	Init = Init,
+	GetBuffer = GetBuffer,
+	OnSnapshotUpdate = OnSnapshotUpdate,
+	Update = Update,
+	GetTargetRenderTime = GetTargetRenderTime,
+	GetEstimatedServerTime = GetEstimatedServerTime,
+	Add = Add,
+	Remove = Remove,
+}

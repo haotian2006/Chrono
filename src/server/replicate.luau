@@ -7,9 +7,21 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
---local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
+
+local ClientReplicateCFrame = Instance.new("RemoteEvent")
+ClientReplicateCFrame.Name = "ClientReplicateCFrame"
+ClientReplicateCFrame.Parent = ReplicatedStorage
+
+local MAX_UNRELIABLE_BYTES = 900
+local SNAPSHOT_SIZE = 19
+local HEADER_SIZE = 2
+local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
+
+local ServerReplicateCFrame = Instance.new("RemoteEvent")
+ServerReplicateCFrame.Name = "ServerReplicateCFrame"
+ServerReplicateCFrame.Parent = ReplicatedStorage
 
 local idStack = {} :: { number }
 local playerIdMap = {} :: { [Player]: number }
@@ -29,6 +41,92 @@ local replicators = {} :: { [number]: Model }
 
 local MAX_ID = 255
 local IncrementalFactoryUID = 0
+
+local function PackF16(float: number): number
+	if float > 65504 then
+		return 0b0_11111_0000000000
+	end
+	if float < -65504 then
+		return 0b1_11111_0000000000
+	end
+	if float ~= float then
+		return 0b1_11111_0000000001
+	end
+	if float == 0 then
+		return 0
+	end
+
+	local absolute = math.abs(float)
+	local interval = math.ldexp(1, math.floor(math.log(absolute, 2)) - 10)
+	local rounded = (absolute // interval) * interval
+	local fraction, exponent = math.frexp(rounded)
+	exponent += 14
+
+	local mantissa = math.round(
+		if exponent <= 0 then fraction * 0x400 / math.ldexp(1, math.abs(exponent)) else fraction * 0x800
+	) % 0x400
+
+	local result = mantissa + math.max(exponent, 0) * 0x400 + if float < 0 then 0x8000 else 0
+
+	return result
+end
+
+local function PackSnapshotData(
+	buff: buffer,
+	offset: number,
+	timestamp: number,
+	cframe: { Position: Vector3, RotationY: number },
+	id: number
+)
+	buffer.writef32(buff, offset + 0, timestamp)
+
+	buffer.writef32(buff, offset + 4, cframe.Position.X)
+	buffer.writef32(buff, offset + 8, cframe.Position.Y)
+	buffer.writef32(buff, offset + 12, cframe.Position.Z)
+
+	buffer.writeu16(buff, offset + 16, PackF16(cframe.RotationY))
+	buffer.writeu8(buff, offset + 18, id)
+end
+
+local function UnpackSnapshotData(
+	buff: buffer,
+	offset: number
+): { timestamp: number, cframe: { Position: Vector3, RotationY: number } }
+	local value = {}
+	value.timestamp = buffer.readf32(buff, offset + 0)
+
+	local x = buffer.readf32(buff, offset + 4)
+	local y = buffer.readf32(buff, offset + 8)
+	local z = buffer.readf32(buff, offset + 12)
+	value.cframe = {}
+	value.cframe.Position = Vector3.new(x, y, z)
+
+	local encoded = buffer.readu16(buff, offset + 16)
+	local mantissaExponent = encoded % 0x8000
+
+	if mantissaExponent == 0b0_11111_0000000000 then
+		value.cframe.RotationY = if encoded // 0x8000 == 1 then -math.huge else math.huge
+	elseif mantissaExponent == 0b1_11111_0000000000 then
+		value.cframe.RotationY = 0 / 0
+	elseif mantissaExponent == 0b0_00000_0000000000 then
+		value.cframe.RotationY = 0
+	else
+		local mantissa = mantissaExponent % 0x400
+		local exponent = mantissaExponent // 0x400
+		local fraction
+
+		if exponent == 0 then
+			fraction = mantissa / 0x400
+		else
+			fraction = mantissa / 0x800 + 0.5
+		end
+
+		local result = math.ldexp(fraction, exponent - 14)
+		value.cframe.RotationY = if encoded // 0x8000 == 1 then -result else result
+	end
+
+	return value
+end
 
 local function GetNextID(): number
 	local reusedID = table.remove(idStack)
@@ -137,22 +235,29 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-Events.ClientReplicateCFrame.On(function(player, clientData)
-	local newCFrame: CFrame?
-	if clientData.cframe == nil then
-		newCFrame = nil
-	else
-		newCFrame = Networkables.DecodeYawCFrame(clientData.cframe)
-	end
-
+ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuffer: buffer)
 	local id = playerIdMap[player]
-	local data = idMap[id]
-	if not data then
+	if not id then
 		return
 	end
 
-	data.clientLastTick = clientData.timestamp
-	data.snapshot:Push(clientData.timestamp, newCFrame :: CFrame)
+	local data = idMap[id]
+	if not data or not data.snapshot then
+		return
+	end
+
+	local SNAPSHOT_SIZE = 18
+
+	local offset = 0
+	for i = 1, buffer.len(snapshotBuffer) // SNAPSHOT_SIZE do
+		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
+		offset += SNAPSHOT_SIZE
+
+		local cframe = CFrame.new(snapshot.cframe.Position) * CFrame.Angles(0, snapshot.cframe.RotationY, 0)
+
+		data.clientLastTick = snapshot.timestamp
+		data.snapshot:Push(snapshot.timestamp, cframe)
+	end
 end)
 
 local function UpdateTick(id: number, tickRate: number)
@@ -184,11 +289,37 @@ local function GetTickInterval(character: Model?, id: number): number
 	return newTickRate
 end
 
+local function Flush(cframes, lastTicks, ids)
+	local count = math.min(#cframes, MAX_BATCH)
+	if count == 0 then
+		return false
+	end
+
+	local buff = buffer.create(count * SNAPSHOT_SIZE)
+	local offset = 0
+	for i = 1, count do
+		local index = #cframes
+		PackSnapshotData(buff, offset, lastTicks[index], cframes[index], ids[index])
+
+		cframes[index] = nil
+		lastTicks[index] = nil
+		ids[index] = nil
+
+		offset += SNAPSHOT_SIZE
+	end
+
+	ServerReplicateCFrame:FireAllClients(buff)
+	Flush(cframes, lastTicks, ids)
+
+	return true
+end
+
 RunService.PostSimulation:Connect(function(deltaTime)
 	Grid.UpdateGrid()
 
 	local cframes = {}
 	local lastTicks = {}
+	local ids = {}
 
 	for id, data in idMap do
 		local character = data.player and data.player.Character or nil
@@ -217,15 +348,11 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		elseif character and character:FindFirstChild("HumanoidRootPart") then
 			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
 		end
-
+		ids[id] = id
 		lastTicks[id] = data.clientLastTick or now --players: client tick, NPCs: server tick aka now
 	end
 
-	Events.ServerReplicateCFrame.FireAll({
-		--using helper function that converts an entire table of CFrames to networkable form
-		cframes = Networkables.NetworkableYawCFrameTable(cframes),
-		timestamps = lastTicks,
-	})
+	Flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks, ids)
 
 	if not Config.DISABLE_DEFAULT_REPLICATION then
 		return
