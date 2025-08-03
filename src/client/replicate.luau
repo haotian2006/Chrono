@@ -268,6 +268,7 @@ ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)
 	local offset = 0
 	local cframes = {}
 	local timestamps = {}
+
 	for i = 1, buffer.len(snapshotBuffer) // SNAPSHOT_SIZE do
 		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
 		offset += SNAPSHOT_SIZE
@@ -276,12 +277,13 @@ ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)
 		cframes[id] = snapshot.cframe
 		timestamps[id] = snapshot.timestamp
 	end
+
 	HandleReplicatedData(timestamps, cframes)
 end)
 
-Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
-	HandleReplicatedData(serverData.timestamps, serverData.cframes)
-end)
+-- Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
+-- 	HandleReplicatedData(serverData.timestamps, serverData.cframes)
+-- end)
 
 RunService.PreRender:Connect(function(deltaTime: number)
 	RenderCache.Update(deltaTime)

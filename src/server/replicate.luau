@@ -7,7 +7,6 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
---local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
@@ -248,10 +247,6 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 	end
 
 	local SNAPSHOT_SIZE = 18
-	-- if buffer.len(snapshotBuffer) < count * SNAPSHOT_SIZE then
-	-- 	warn("invalid format")
-	-- 	return
-	-- end
 
 	local offset = 0
 	for i = 1, buffer.len(snapshotBuffer) // SNAPSHOT_SIZE do
@@ -305,14 +300,17 @@ local function Flush(cframes, lastTicks, ids)
 	for i = 1, count do
 		local index = #cframes
 		PackSnapshotData(buff, offset, lastTicks[index], cframes[index], ids[index])
+
 		cframes[index] = nil
 		lastTicks[index] = nil
 		ids[index] = nil
 
 		offset += SNAPSHOT_SIZE
 	end
+
 	ServerReplicateCFrame:FireAllClients(buff)
 	Flush(cframes, lastTicks, ids)
+
 	return true
 end
 
@@ -354,12 +352,6 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		lastTicks[id] = data.clientLastTick or now --players: client tick, NPCs: server tick aka now
 	end
 
-	--[[
-	Events.ServerReplicateCFrame.FireAll({
-		--using helper function that converts an entire table of CFrames to networkable form
-		cframes = Networkables.NetworkableYawCFrameTable(cframes),
-		timestamps = lastTicks,
-	})]]
 	Flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks, ids)
 
 	if not Config.DISABLE_DEFAULT_REPLICATION then
