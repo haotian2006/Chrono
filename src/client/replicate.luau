@@ -10,14 +10,14 @@ local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 local RenderCache = require(script.Parent.renderCache)
 
 local MAX_UNRELIABLE_BYTES = 900
-local SNAPSHOT_SIZE = 18
+local SNAPSHOT_SIZE = 19
 local HEADER_SIZE = 2
 local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
 local outgoingSnapshots = {} :: { { timestamp: number, cframe: { Position: Vector3, RotationY: number } } }
 
-local ClientReplicateCFrame = ReplicatedStorage:WaitForChild("ClientReplicateCFrame")
-local ServerReplicateCFrame = ReplicatedStorage:WaitForChild("ServerReplicateCFrame")
+local ClientReplicateCFrame:RemoteEvent = ReplicatedStorage:WaitForChild("ClientReplicateCFrame") :: any
+local ServerReplicateCFrame:RemoteEvent = ReplicatedStorage:WaitForChild("ServerReplicateCFrame") :: any
 
 local idMap = {} :: {
 	[number]: {
@@ -71,6 +71,48 @@ local function PackF16(float: number): number
 	return result
 end
 
+local function UnpackSnapshotData(
+	buff: buffer,
+	offset: number
+): { timestamp: number, cframe: { Position: Vector3, RotationY: number }, id: number }
+	local value = {}
+	value.timestamp = buffer.readf32(buff, offset + 0)
+
+	local x = buffer.readf32(buff, offset + 4)
+	local y = buffer.readf32(buff, offset + 8)
+	local z = buffer.readf32(buff, offset + 12)
+	value.cframe = {}
+	value.cframe.Position = Vector3.new(x, y, z)
+
+	local encoded = buffer.readu16(buff, offset + 16)
+	local id = buffer.readu8(buff, offset + 18)
+	local mantissaExponent = encoded % 0x8000
+	value.id = id
+
+	if mantissaExponent == 0b0_11111_0000000000 then
+		value.cframe.RotationY = if encoded // 0x8000 == 1 then -math.huge else math.huge
+	elseif mantissaExponent == 0b1_11111_0000000000 then
+		value.cframe.RotationY = 0 / 0
+	elseif mantissaExponent == 0b0_00000_0000000000 then
+		value.cframe.RotationY = 0
+	else
+		local mantissa = mantissaExponent % 0x400
+		local exponent = mantissaExponent // 0x400
+		local fraction
+
+		if exponent == 0 then
+			fraction = mantissa / 0x400
+		else
+			fraction = mantissa / 0x800 + 0.5
+		end
+
+		local result = math.ldexp(fraction, exponent - 14)
+		value.cframe.RotationY = if encoded // 0x8000 == 1 then -result else result
+	end
+
+	return value
+end
+
 local function PackSnapshotData(
 	buff: buffer,
 	offset: number,
@@ -96,10 +138,12 @@ local function FlushSnapshots()
 	local snapshotBuffer = buffer.create(count * SNAPSHOT_SIZE)
 	for i = 1, count do
 		local snapshot = outgoingSnapshots[#outgoingSnapshots]
+		outgoingSnapshots[#outgoingSnapshots] = nil
 		PackSnapshotData(snapshotBuffer, offset, snapshot.timestamp, snapshot.cframe)
 		offset += SNAPSHOT_SIZE
 	end
 	ClientReplicateCFrame:FireServer(snapshotBuffer)
+	FlushSnapshots()
 	return true
 end
 
@@ -183,8 +227,7 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
-	local clientLastTicks = serverData.timestamps
+local function HandleReplicatedData(clientLastTicks,cframes)
 	for id, serverTime in clientLastTicks do
 		if not idMap[id] then
 			local npcType = "DEFAULT" --will be overrided once replicated & configed on the client
@@ -205,7 +248,6 @@ Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: n
 
 	RenderCache.OnSnapshotUpdate(clientLastTicks)
 
-	local cframes = serverData.cframes
 
 	for id, cframe in cframes do
 		local entry = idMap[id]
@@ -219,6 +261,25 @@ Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: n
 		--same applies on the server as well of course.
 		entry.snapshot:Push(clientLastTicks[id], Networkables.DecodeYawCFrame(cframe))
 	end
+end
+
+ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)  
+	local offset = 0
+	local cframes = {}
+	local timestamps = {}
+	for i = 1, buffer.len(snapshotBuffer)//SNAPSHOT_SIZE do
+		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
+		offset += SNAPSHOT_SIZE
+
+		local id = snapshot.id
+		cframes[id] = snapshot.cframe
+		timestamps[id] = snapshot.timestamp
+	end
+	HandleReplicatedData(timestamps, cframes)
+end)
+
+Events.ServerReplicateCFrame.On(function(serverData: { timestamps: { [number]: number }, cframes: { [number]: any } })
+	HandleReplicatedData(serverData.timestamps, serverData.cframes)
 end)
 
 RunService.PreRender:Connect(function(deltaTime: number)
