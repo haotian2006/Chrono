@@ -16,8 +16,8 @@ local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
 local outgoingSnapshots = {} :: { { timestamp: number, cframe: { Position: Vector3, RotationY: number } } }
 
-local ClientReplicateCFrame:RemoteEvent = ReplicatedStorage:WaitForChild("ClientReplicateCFrame") :: any
-local ServerReplicateCFrame:RemoteEvent = ReplicatedStorage:WaitForChild("ServerReplicateCFrame") :: any
+local ClientReplicateCFrame: RemoteEvent = ReplicatedStorage:WaitForChild("ClientReplicateCFrame") :: any
+local ServerReplicateCFrame: RemoteEvent = ReplicatedStorage:WaitForChild("ServerReplicateCFrame") :: any
 
 local idMap = {} :: {
 	[number]: {
@@ -128,12 +128,12 @@ local function PackSnapshotData(
 	buffer.writeu16(buff, offset + 16, PackF16(cframe.RotationY))
 end
 
-local function FlushSnapshots()
+local function Flush()
 	local count = math.min(#outgoingSnapshots, MAX_BATCH)
 	if count == 0 then
 		return false
 	end
-	
+
 	local offset = 0
 	local snapshotBuffer = buffer.create(count * SNAPSHOT_SIZE)
 	for i = 1, count do
@@ -142,8 +142,10 @@ local function FlushSnapshots()
 		PackSnapshotData(snapshotBuffer, offset, snapshot.timestamp, snapshot.cframe)
 		offset += SNAPSHOT_SIZE
 	end
+
 	ClientReplicateCFrame:FireServer(snapshotBuffer)
-	FlushSnapshots()
+	Flush()
+
 	return true
 end
 
@@ -227,7 +229,7 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
-local function HandleReplicatedData(clientLastTicks,cframes)
+local function HandleReplicatedData(clientLastTicks, cframes)
 	for id, serverTime in clientLastTicks do
 		if not idMap[id] then
 			local npcType = "DEFAULT" --will be overrided once replicated & configed on the client
@@ -248,7 +250,6 @@ local function HandleReplicatedData(clientLastTicks,cframes)
 
 	RenderCache.OnSnapshotUpdate(clientLastTicks)
 
-
 	for id, cframe in cframes do
 		local entry = idMap[id]
 		if not entry then
@@ -263,11 +264,11 @@ local function HandleReplicatedData(clientLastTicks,cframes)
 	end
 end
 
-ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)  
+ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)
 	local offset = 0
 	local cframes = {}
 	local timestamps = {}
-	for i = 1, buffer.len(snapshotBuffer)//SNAPSHOT_SIZE do
+	for i = 1, buffer.len(snapshotBuffer) // SNAPSHOT_SIZE do
 		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
 		offset += SNAPSHOT_SIZE
 
@@ -342,7 +343,7 @@ RunService.PostSimulation:Connect(function()
 		cframe = networkable,
 	})
 
-	FlushSnapshots()
+	Flush()
 end)
 
 return {

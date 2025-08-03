@@ -15,7 +15,6 @@ local ClientReplicateCFrame = Instance.new("RemoteEvent")
 ClientReplicateCFrame.Name = "ClientReplicateCFrame"
 ClientReplicateCFrame.Parent = ReplicatedStorage
 
-
 local MAX_UNRELIABLE_BYTES = 900
 local SNAPSHOT_SIZE = 19
 local HEADER_SIZE = 2
@@ -43,7 +42,6 @@ local replicators = {} :: { [number]: Model }
 
 local MAX_ID = 255
 local IncrementalFactoryUID = 0
-
 
 local function PackF16(float: number): number
 	if float > 65504 then
@@ -78,7 +76,8 @@ local function PackSnapshotData(
 	buff: buffer,
 	offset: number,
 	timestamp: number,
-	cframe: { Position: Vector3, RotationY: number },id:number
+	cframe: { Position: Vector3, RotationY: number },
+	id: number
 )
 	buffer.writef32(buff, offset + 0, timestamp)
 
@@ -255,7 +254,7 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 	-- end
 
 	local offset = 0
-	for i = 1, buffer.len(snapshotBuffer)//SNAPSHOT_SIZE do
+	for i = 1, buffer.len(snapshotBuffer) // SNAPSHOT_SIZE do
 		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
 		offset += SNAPSHOT_SIZE
 
@@ -295,7 +294,7 @@ local function GetTickInterval(character: Model?, id: number): number
 	return newTickRate
 end
 
-local function flush(cframes,lastTicks,ids)
+local function Flush(cframes, lastTicks, ids)
 	local count = math.min(#cframes, MAX_BATCH)
 	if count == 0 then
 		return false
@@ -303,9 +302,9 @@ local function flush(cframes,lastTicks,ids)
 
 	local buff = buffer.create(count * SNAPSHOT_SIZE)
 	local offset = 0
-	for i=1,count do
-		local index = #cframes 
-		PackSnapshotData(buff, offset,lastTicks[index], cframes[index],ids[index])
+	for i = 1, count do
+		local index = #cframes
+		PackSnapshotData(buff, offset, lastTicks[index], cframes[index], ids[index])
 		cframes[index] = nil
 		lastTicks[index] = nil
 		ids[index] = nil
@@ -313,7 +312,7 @@ local function flush(cframes,lastTicks,ids)
 		offset += SNAPSHOT_SIZE
 	end
 	ServerReplicateCFrame:FireAllClients(buff)
-	flush(cframes, lastTicks,ids)
+	Flush(cframes, lastTicks, ids)
 	return true
 end
 
@@ -361,7 +360,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		cframes = Networkables.NetworkableYawCFrameTable(cframes),
 		timestamps = lastTicks,
 	})]]
-	flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks,ids)
+	Flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks, ids)
 
 	if not Config.DISABLE_DEFAULT_REPLICATION then
 		return
