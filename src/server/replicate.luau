@@ -185,7 +185,7 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuffer: buffer, count: number)
+ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuffer: buffer)
 	local id = playerIdMap[player]
 	if not id then
 		return
@@ -197,14 +197,14 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 	end
 
 	local SNAPSHOT_SIZE = 18
-	if buffer.len(snapshotBuffer) < count * SNAPSHOT_SIZE then
-		warn("invalid format")
-		return
-	end
+	-- if buffer.len(snapshotBuffer) < count * SNAPSHOT_SIZE then
+	-- 	warn("invalid format")
+	-- 	return
+	-- end
 
 	local offset = 0
-
-	for i = 1, count do
+	print(buffer.len(snapshotBuffer))
+	for i = 1, buffer.len(snapshotBuffer)//SNAPSHOT_SIZE do
 		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
 		print(snapshot)
 		offset += SNAPSHOT_SIZE

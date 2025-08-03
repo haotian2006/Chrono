@@ -15,7 +15,6 @@ local HEADER_SIZE = 2
 local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
 local outgoingSnapshots = {} :: { { timestamp: number, cframe: { Position: Vector3, RotationY: number } } }
-local snapshotBuffer = buffer.create(MAX_UNRELIABLE_BYTES)
 
 local ClientReplicateCFrame = ReplicatedStorage:WaitForChild("ClientReplicateCFrame")
 local ServerReplicateCFrame = ReplicatedStorage:WaitForChild("ServerReplicateCFrame")
@@ -90,19 +89,18 @@ end
 local function FlushSnapshots()
 	local count = math.min(#outgoingSnapshots, MAX_BATCH)
 	if count == 0 then
-		return
+		return false
 	end
-
+	
 	local offset = 0
+	local snapshotBuffer = buffer.create(count * SNAPSHOT_SIZE)
 	for i = 1, count do
-		local snapshot = outgoingSnapshots[i]
+		local snapshot = outgoingSnapshots[#outgoingSnapshots]
 		PackSnapshotData(snapshotBuffer, offset, snapshot.timestamp, snapshot.cframe)
 		offset += SNAPSHOT_SIZE
 	end
-
-	ClientReplicateCFrame:FireServer(snapshotBuffer, count)
-
-	table.clear(outgoingSnapshots)
+	ClientReplicateCFrame:FireServer(snapshotBuffer)
+	return true
 end
 
 local function RegisterClientNPC(id: number, model: Model, npcType: string?)
