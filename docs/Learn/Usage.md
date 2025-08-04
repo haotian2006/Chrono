@@ -16,11 +16,12 @@ To implement:
 ```lua
 --Client
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ChronoClient = require(ReplicatedStorage.Chrono.client)
+local ChronoClient = require(ReplicatedStorage.Client.replicate)
 ```
 ```lua
 --Server
-local ChronoServer = require(ReplicatedStorage.Chrono.server) 
+local ServerScriptService = game:GetService("ServerScriptService")
+local ChronoServer = require(ServerScriptService.Services.replicate)
 ```
 Once required:
 
