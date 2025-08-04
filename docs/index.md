@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Chrono
   text: Custom Character Replication
-  tagline: v1.0.0
+  tagline: Precision in motion, custom by design. The definitive physics replication library.
   image: "./logo.png"
   actions:
     - theme: brand
