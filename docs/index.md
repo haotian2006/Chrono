@@ -4,8 +4,6 @@ layout: home
 hero:
   name: Chrono
   tagline: Roblox Custom Character Replication Solution
-  image:
-    src: /logo.svg
   actions:
     - theme: brand
       text: Learn
@@ -14,7 +12,7 @@ hero:
       text: API Reference
       link: /API/Interpolation-Buffer
     - theme: alt
-      text: GitHub
+      text: Github
       link: https://github.com/Parihsz/Chrono
 
 features:

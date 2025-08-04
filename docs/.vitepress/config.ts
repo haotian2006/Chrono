@@ -37,14 +37,10 @@ export default defineConfig({
     // ['link', { rel: 'icon', href: '/favicon.png' }],
   ],
   themeConfig: {
-    logo: '/logo.png',
     // siteTitle: false,
     outline: 'deep',
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Parihsz/Chrono' },
-    ],
-    nav: [
-      { text: 'Installing', link: '/installing' },
     ],
     sidebar: sidebar(),
   }
