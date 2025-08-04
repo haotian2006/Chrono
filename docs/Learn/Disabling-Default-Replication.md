@@ -24,6 +24,10 @@ This is the **most straightforward** and **simplest** way to disable character r
 Animations **replicate fine** using this method, and **character appearances already replicate** by default.
 :::
 
+::: danger
+Make sure to anchor the player on the server **after** network ownership has been set by roblox. 
+:::
+
 ### Collision Handling
 
 - Each player should be **represented as a dummy**  
