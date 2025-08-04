@@ -4,7 +4,7 @@ on:
   workflow_dispatch: {}
   push:
     branches:
-      - docs
+      - master
 
 jobs:
   deploy:
