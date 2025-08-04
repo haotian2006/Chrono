@@ -39,6 +39,7 @@ export default defineConfig({
   themeConfig: {
     // siteTitle: false,
     outline: 'deep',
+    logo: '/logo.png',
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Parihsz/Chrono' },
     ],

@@ -4,6 +4,7 @@ layout: home
 hero:
   name: Chrono
   tagline: Roblox Custom Character Replication Solution
+  image: "./logo.png"
   actions:
     - theme: brand
       text: Learn
@@ -21,8 +22,8 @@ features:
     details: Lower interpolation buffer for low latency players using statistics
   - icon: ⚡
     title: Lightning Performance
-    details: Fast buffer serdes, coordinate encoding and proximity based optimizations
-  - icon: 🛡️
+    details: Fast buffer serdes, packet batching, coordinate encoding and proximity based optimizations
+  - icon: 👾
     title: NPC Support
     details: Register and deregister any entities easily to be custom replicated
   - icon: ⚙️
