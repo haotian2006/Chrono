@@ -14,3 +14,6 @@ exclude = [
      ".gitignore",
 ]
 realm = "shared"
+
+[dev-dependencies]
+iris = "sirmallard/iris@2.5.0"
