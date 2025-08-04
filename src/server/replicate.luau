@@ -7,6 +7,7 @@ local Config = require(ReplicatedStorage.Shared.config)
 local Snapshots = require(ReplicatedStorage.Shared.snapshots)
 local Grid = require(ReplicatedStorage.Shared.grid)
 local Events = require(ReplicatedStorage.Events.server)
+local config = require(ReplicatedStorage.Shared.config)
 
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 
@@ -152,19 +153,17 @@ local function GetNPCConfig(npcType: string?): any
 end
 
 local function OnCharacterAdded(player: Player, character: Model, id: number)
-	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart
-
 	if Config.DISABLE_DEFAULT_REPLICATION then
-		if humanoidRootPart then
-			humanoidRootPart.Anchored = true
+		if StarterPlayer:FindFirstChild("Startercharacter") then
+			local clone: Model = StarterPlayer.StarterCharacter:Clone()
+			clone.Parent = workspace.CurrentCamera
+
+			replicators[id] = clone
 		end
 	end
 
-	if Config.DISABLE_DEFAULT_REPLICATION then
-		local clone: Model = StarterPlayer.StarterCharacter:Clone()
-		clone.Parent = workspace.CurrentCamera
-
-		replicators[id] = clone
+	if Config.ENABLE_CUSTOM_CHARACTERS then
+		character.Parent = workspace.CurrentCamera
 	end
 
 	Grid.AddEntity(character, "player")
@@ -257,6 +256,12 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 
 		data.clientLastTick = snapshot.timestamp
 		data.snapshot:Push(snapshot.timestamp, cframe)
+	end
+
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if config.DISABLE_DEFAULT_REPLICATION and hrp then
+		hrp.Anchored = true
 	end
 end)
 

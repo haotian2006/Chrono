@@ -8,6 +8,7 @@ local Events = require(ReplicatedStorage.Events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
 local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
 local RenderCache = require(script.Parent.renderCache)
+local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
 
 local MAX_UNRELIABLE_BYTES = 900
 local SNAPSHOT_SIZE = 19
@@ -176,10 +177,28 @@ local function PlayerAdded(player: Player, id: number)
 
 	local initialRenderTime = os.clock()
 
-	local character = player.Character or player.CharacterAdded:Wait()
-	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
-	humanoidRootPart.Anchored = false
-	characters[player] = character
+	if Config.ENABLE_CUSTOM_CHARACTERS then
+		local rig = Rig(player, player.UserId)
+		if not rig or not rig.Model then
+			warn("Failed to create character for player", player)
+			return
+		end
+
+		rig.Model.Parent = workspace
+		characters[player] = rig.Model
+
+		workspace.CurrentCamera.CameraSubject = rig.Model:FindFirstChildOfClass("Humanoid") or rig.Model.PrimaryPart
+	else
+		local character = player.Character or player.CharacterAdded:Wait()
+		local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
+		humanoidRootPart.Anchored = false
+
+		humanoidRootPart:GetPropertyChangedSignal("Anchored"):Connect(function()
+			humanoidRootPart.Anchored = false
+		end)
+
+		characters[player] = character
+	end
 
 	local initialCFrame = CFrame.identity
 
@@ -197,7 +216,7 @@ local function PlayerAdded(player: Player, id: number)
 
 	RenderCache.Add(id)
 
-	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	local humanoid = characters[player]:WaitForChild("Humanoid") :: Humanoid
 
 	humanoid.Died:Connect(function()
 		initializedPlayers[player] = nil

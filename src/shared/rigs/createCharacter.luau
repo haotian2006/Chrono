@@ -1,7 +1,10 @@
 local Players = game:GetService("Players")
-return function(player: Player): { Model: Model }
+return function(player: Player, userId: number): { Model: Model }
 	local rig = {}
-	local userId = 1242803262
+
+	if userId < -1 then
+		userId = 1242803262
+	end
 
 	local humanoidDescription = Players:GetHumanoidDescriptionFromUserId(userId)
 	local model = Players:CreateHumanoidModelFromDescription(humanoidDescription, Enum.HumanoidRigType.R15)
