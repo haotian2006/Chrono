@@ -1,10 +1,10 @@
-name: Deploy
+name: Deploy Docs
 
 on:
-  workflow_dispatch: {}
   push:
     branches:
-      - master
+      - docs
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -15,28 +15,29 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
           cache: npm
 
       - run: npm ci
 
-      - name: Build
+      - name: Build Docs
         run: npm run docs:build
 
-      - uses: actions/configure-pages@v2
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
 
-      - uses: actions/upload-pages-artifact@v1
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v2
         with:
           path: docs/.vitepress/dist
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
