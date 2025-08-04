@@ -3,7 +3,8 @@ layout: home
 
 hero:
   name: Chrono
-  tagline: Roblox Custom Character Replication Solution
+  text: Custom Character Replication
+  tagline: v1.0.0
   image: "./logo.png"
   actions:
     - theme: brand
