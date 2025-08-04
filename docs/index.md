@@ -14,18 +14,21 @@ hero:
       text: API Reference
       link: /API/Interpolation-Buffer
     - theme: alt
-      text: Github
+      text: GitHub
       link: https://github.com/Parihsz/Chrono
+
 features:
-  - title: Dynamic Interpolation 
-    icon: 🌐
+  - icon: 🌐
+    title: Dynamic Interpolation
     details: Lower interpolation buffer for low latency players using statistics
-  - title: Lightning Performance
-    icon: ⚡
+  - icon: ⚡
+    title: Lightning Performance
     details: Fast buffer serdes, coordinate encoding and proximity based optimizations
-  - title: NPC Support
-    icon: 👾
-    details: Register and deregister any entites easily to be custom replicated
-  - title: Full Configuability
-    icon: ⚙️
+  - icon: 🛡️
+    title: NPC Support
+    details: Register and deregister any entities easily to be custom replicated
+  - icon: ⚙️
+    title: Full Configurability
     details: Support for custom characters, disabled physics replication and custom animation replication
+---
+
