@@ -1,2 +1,16 @@
+---
+title: Installation
+outline: deep
+---
+
 # Installation
-Manually paste the Github files because I am too lazy to set up wally (for now)
+
+For **Rojo** users: 
+In your `wally.toml`, add the following line to your dependencies.
+
+```toml
+chrono = "parihsz/chrono@1.0.0"
+```
+
+For **Studio** users:
+Download the latest rbxl file from Github Releases
