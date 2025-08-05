@@ -39,7 +39,7 @@ If you want to **replicate NPCs** with Chrono:
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local NpcCache = require(ReplicatedStorage.Packages.chrono.shared.npcCache)
 
-npcCache.Register(npcModel, "DEFAULT", "TestNPCs", true)
+NpcCache.Register(npcModel, "DEFAULT", "TestNPCs", true)
 
 --you will simply need to update the npc's cframe and it would automatically be replicated.
 --default replication is fully disabled in this case.
@@ -58,6 +58,7 @@ npcCache.Register(npcModel, "DEFAULT", "TestNPCs", true)
 If you need the **latest replicated position** of a player or NPC for logic (hit detection, AI, etc.):
 ```lua
 local ChronoServer = require(ReplicatedStorage.Packages.chrono.server.replicate)
+local npcId = npcModel:GetAttribute("NPC_ID") -- this is how you get the id from an npc model
 local cframe = ChronoServer.GetLatestCFrame(npcId or player)
 if cframe then
     print(`Latest replicated position: {cframe.Position}`)
