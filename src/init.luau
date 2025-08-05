@@ -7,7 +7,7 @@ local function LoadFolder(folder: Folder)
 			local success, message
 
 			task.spawn(function()
-				success, message = pcall(require, pcall)
+				success, message = pcall(require, moduleScript)
 
 				yielded = false
 			end)
