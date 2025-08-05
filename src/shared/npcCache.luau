@@ -120,7 +120,7 @@ if IS_CLIENT then
 	end)
 	Check()
 else
-	RunService.PostSimulation:Connect(function(dt)
+	RunService.PreSimulation:Connect(function(dt)
 		local now = os.clock()
 		for id, model in AutomaticNpc do
 			ServerReplicate.PushNPCTransform(id, model:GetPivot(), now)
