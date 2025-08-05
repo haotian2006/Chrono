@@ -27,6 +27,7 @@ local Chrono = {}
 
 function Chrono.Start()
 	LoadFolder(if RunService:IsServer() then script.server else script.client)
+	LoadFolder(script.shared)
 end
 
 return Chrono

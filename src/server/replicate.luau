@@ -32,6 +32,7 @@ local idMap = {} :: {
 		clientLastTick: number?,
 		serverOwned: boolean?,
 		npcType: string?,
+		model: Model?,
 	},
 }
 
@@ -399,7 +400,7 @@ local function GetLatestCFrame(target: Player | number): CFrame?
 	elseif typeof(target) == "number" then
 		id = target
 	else
-		return nil
+		return nil 
 	end
 
 	if not id then
@@ -417,7 +418,7 @@ local function GetLatestCFrame(target: Player | number): CFrame?
 	end
 
 	return nil
-end
+end 
 
 local function RegisterNPC(model: Model?, npcType: string?): number
 	local id = GetNextID()
@@ -430,6 +431,7 @@ local function RegisterNPC(model: Model?, npcType: string?): number
 		clientLastTick = os.clock(),
 		serverOwned = true,
 		npcType = npcType or "DEFAULT",
+		model = model,
 	}
 	lastReplicatedTimes[id] = 0
 
@@ -438,10 +440,30 @@ local function RegisterNPC(model: Model?, npcType: string?): number
 
 	if model then
 		model:SetAttribute("NPC_ID", id)
+		if npcType ~= "DEFAULT" then
+			model:SetAttribute("NPC_TYPE", npcType)
+		end
 		Grid.AddEntity(model, "npc")
 	end
 
 	return id
+end
+
+local function UnregisterNPC(id: number): Model?
+	local data = idMap[id]
+	if not data then
+		return
+	end
+
+	idMap[id] = nil
+	lastReplicatedTimes[id] = nil
+	playerTickRates[id] = nil
+
+	ReturnID(id)
+	if data.model then
+		Grid.RemoveEntity(data.model)
+	end
+	return data.model
 end
 
 local function PushNPCTransform(id: number, cframe: CFrame)
@@ -457,4 +479,5 @@ return {
 	GetLatestCFrame = GetLatestCFrame,
 	RegisterNPC = RegisterNPC,
 	PushNPCTransform = PushNPCTransform,
+	UnregisterNPC = UnregisterNPC
 }
