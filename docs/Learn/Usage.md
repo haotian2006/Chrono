@@ -36,8 +36,8 @@ Once required:
 If you want to **replicate NPCs** with Chrono:
 ```lua
 --Server-side
-local ServerScriptService = game:GetService("ServerScriptService")
-local ChronoServer = require(ServerScriptService.Services.replicate)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ChronoServer = require(ReplicatedStorage.Packages.chrono.server.replicate)
 
 local npcId = ChronoServer.RegisterNPC(npcModel, "DEFAULT") --sets npcModel:SetAttribute("NPC_ID", npcId)
 
@@ -48,7 +48,7 @@ ChronoServer.PushNPCTransform(npcId, npcModel:GetPivot())
 ```lua
 --Client-side
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ChronoClient = require(ReplicatedStorage.Client.replicate)
+local ChronoServer = require(ReplicatedStorage.Packages.chrono.client.replicate)
 
 --after the NPC model exists locally
 ChronoClient.RegisterClientNPC(npcId, npcModel, "DEFAULT")
