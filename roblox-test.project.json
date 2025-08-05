@@ -15,7 +15,8 @@
                 }
             },
 
-            "DevPackages": { "$path": "DevPackages" },
+            "DevPackages": { "$path": "DevPackages"},
+            "Benches": { "$path": "benches"},
 
             "$path": "test"
         }
