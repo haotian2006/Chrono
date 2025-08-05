@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+
 return function(player: Player, userId: number): { Model: Model }
 	local rig = {}
 

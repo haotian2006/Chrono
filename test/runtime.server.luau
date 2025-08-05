@@ -10,9 +10,7 @@ for _, moduleScript in ServerScriptService.Services:GetDescendants() do
 		local message
 
 		task.spawn(function()
-			success, message = pcall(function()
-				require(moduleScript)
-			end)
+			success, message = pcall(require, moduleScript)
 
 			yielded = false
 		end)

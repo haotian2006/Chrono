@@ -1,13 +1,6 @@
 {
-  "name": "fondcoolreplication",
-  "emitLegacyScripts": false,
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": { "Shared": { "$path": "src/shared" },
-    "Events": { "$path": "src/events" },
-    "Client": { "$path": "src/client" },
-    "Debugger": { "$path": "src/debugger" }
-    },
-    "ServerScriptService": { "Services": { "$path": "src/server" } }
-  }
+	"name": "chrono",
+	"tree": {
+		"$path": "src"
+	}
 }

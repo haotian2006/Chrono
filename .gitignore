@@ -4,8 +4,9 @@
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
-/.vscode/settings.json
-.vscode/settings.json
 
 sourcemap.json
 node_modules/
+
+# Development
+DevPackages
