@@ -1,5 +1,4 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Config = require(ReplicatedStorage.Shared.config)
+local Config = require(script.Parent.Parent.shared.config)
 
 local playerTickRates
 local BufferTracker

@@ -2,13 +2,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Config = require(ReplicatedStorage.Shared.config)
-local Snapshots = require(ReplicatedStorage.Shared.snapshots)
-local Events = require(ReplicatedStorage.Events.client)
+local Config = require(script.Parent.Parent.shared.config)
+local Snapshots = require(script.Parent.Parent.shared.snapshots)
+local Events = require(script.Parent.Parent.events.client)
 local InterpolationBuffer = require(script.Parent.interpolationBuffer)
-local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
+local Networkables = require(script.Parent.Parent.shared.makeNetworkable)
 local RenderCache = require(script.Parent.renderCache)
-local Rig = require(ReplicatedStorage.Shared.rigs.createCharacter)
+local Rig = require(script.Parent.Parent.shared.rigs.createCharacter)
 
 local MAX_UNRELIABLE_BYTES = 900
 local SNAPSHOT_SIZE = 19

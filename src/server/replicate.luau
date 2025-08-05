@@ -3,13 +3,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local Config = require(ReplicatedStorage.Shared.config)
-local Snapshots = require(ReplicatedStorage.Shared.snapshots)
-local Grid = require(ReplicatedStorage.Shared.grid)
-local Events = require(ReplicatedStorage.Events.server)
-local config = require(ReplicatedStorage.Shared.config)
-
-local Networkables = require(ReplicatedStorage.Shared.makeNetworkable)
+local Config = require(script.Parent.Parent.shared.config)
+local Snapshots = require(script.Parent.Parent.shared.snapshots)
+local Grid = require(script.Parent.Parent.shared.grid)
+local Events = require(script.Parent.Parent.events.server)
+local config = require(script.Parent.Parent.shared.config)
+local Networkables = require(script.Parent.Parent.shared.makeNetworkable)
 
 local ClientReplicateCFrame = Instance.new("RemoteEvent")
 ClientReplicateCFrame.Name = "ClientReplicateCFrame"

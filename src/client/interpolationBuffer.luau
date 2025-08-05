@@ -1,4 +1,5 @@
 local RenderCache = require(script.Parent.renderCache)
+
 return function(minBuffer: number, maxBuffer: number, alpha: number)
 	--average latency will be the average RTT between the client & server
 	local playerLatencies = {} :: { [number]: { averageLatency: number, deviation: number, lastLatency: number? } }

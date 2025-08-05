@@ -3,5 +3,17 @@ name = "parihsz/fondcoolreplication"
 description = "Custom Character Replication"
 version = "0.2.2"
 registry = "https://github.com/UpliftGames/wally-index"
-exclude = [".vscode", "rokit.toml", ".luaurc", "sourcemap.json", "selene.toml", "README.md"]
+exclude = [
+     ".vscode",
+     "rokit.toml",
+     ".luaurc",
+     "sourcemap.json",
+     "selene.toml",
+     "README.md",
+     "docs",
+     ".gitignore",
+]
 realm = "shared"
+
+[dev-dependencies]
+iris = "sirmallard/iris@2.5.0"
