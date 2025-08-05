@@ -348,13 +348,16 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		lastReplicatedTimes[id] = now
 
 		local latestSnapshot = data.snapshot:GetLatest()
+		local cframe
 		if latestSnapshot then
-			cframes[id] = latestSnapshot.value
+			cframe = latestSnapshot.value
 		elseif character and character:FindFirstChild("HumanoidRootPart") then
-			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
+			cframe = (character :: any).HumanoidRootPart.CFrame
 		end
-		ids[id] = id
-		lastTicks[id] = data.clientLastTick or now --players: client tick, NPCs: server tick aka now
+
+		table.insert(cframes, cframe)
+		table.insert(lastTicks, data.clientLastTick or now)
+		table.insert(ids, id)
 	end
 
 	Flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks, ids)
@@ -400,7 +403,7 @@ local function GetLatestCFrame(target: Player | number): CFrame?
 	elseif typeof(target) == "number" then
 		id = target
 	else
-		return nil 
+		return nil
 	end
 
 	if not id then
@@ -418,7 +421,7 @@ local function GetLatestCFrame(target: Player | number): CFrame?
 	end
 
 	return nil
-end 
+end
 
 local function RegisterNPC(model: Model?, npcType: string?): number
 	local id = GetNextID()
@@ -466,12 +469,12 @@ local function UnregisterNPC(id: number): Model?
 	return data.model
 end
 
-local function PushNPCTransform(id: number, cframe: CFrame)
+local function PushNPCTransform(id: number, cframe: CFrame, t: number?)
 	local data = idMap[id]
 	if data and data.serverOwned then
-		local now = os.clock()
-		data.snapshot:Push(now, cframe)
-		data.clientLastTick = now
+		local stamp = t or os.clock()
+		data.snapshot:Push(stamp, cframe)
+		data.clientLastTick = stamp
 	end
 end
 
@@ -479,5 +482,5 @@ return {
 	GetLatestCFrame = GetLatestCFrame,
 	RegisterNPC = RegisterNPC,
 	PushNPCTransform = PushNPCTransform,
-	UnregisterNPC = UnregisterNPC
+	UnregisterNPC = UnregisterNPC,
 }
