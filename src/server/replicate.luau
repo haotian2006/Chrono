@@ -32,6 +32,7 @@ local idMap = {} :: {
 		clientLastTick: number?,
 		serverOwned: boolean?,
 		npcType: string?,
+		model: Model?,
 	},
 }
 
@@ -347,13 +348,16 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		lastReplicatedTimes[id] = now
 
 		local latestSnapshot = data.snapshot:GetLatest()
+		local cframe
 		if latestSnapshot then
-			cframes[id] = latestSnapshot.value
+			cframe = latestSnapshot.value
 		elseif character and character:FindFirstChild("HumanoidRootPart") then
-			cframes[id] = ((character :: any).HumanoidRootPart :: any).CFrame
+			cframe = (character :: any).HumanoidRootPart.CFrame
 		end
-		ids[id] = id
-		lastTicks[id] = data.clientLastTick or now --players: client tick, NPCs: server tick aka now
+
+		table.insert(cframes, cframe)
+		table.insert(lastTicks, data.clientLastTick or now)
+		table.insert(ids, id)
 	end
 
 	Flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks, ids)
@@ -430,6 +434,7 @@ local function RegisterNPC(model: Model?, npcType: string?): number
 		clientLastTick = os.clock(),
 		serverOwned = true,
 		npcType = npcType or "DEFAULT",
+		model = model,
 	}
 	lastReplicatedTimes[id] = 0
 
@@ -438,18 +443,38 @@ local function RegisterNPC(model: Model?, npcType: string?): number
 
 	if model then
 		model:SetAttribute("NPC_ID", id)
+		if npcType ~= "DEFAULT" then
+			model:SetAttribute("NPC_TYPE", npcType)
+		end
 		Grid.AddEntity(model, "npc")
 	end
 
 	return id
 end
 
-local function PushNPCTransform(id: number, cframe: CFrame)
+local function UnregisterNPC(id: number): Model?
+	local data = idMap[id]
+	if not data then
+		return
+	end
+
+	idMap[id] = nil
+	lastReplicatedTimes[id] = nil
+	playerTickRates[id] = nil
+
+	ReturnID(id)
+	if data.model then
+		Grid.RemoveEntity(data.model)
+	end
+	return data.model
+end
+
+local function PushNPCTransform(id: number, cframe: CFrame, t: number?)
 	local data = idMap[id]
 	if data and data.serverOwned then
-		local now = os.clock()
-		data.snapshot:Push(now, cframe)
-		data.clientLastTick = now
+		local stamp = t or os.clock()
+		data.snapshot:Push(stamp, cframe)
+		data.clientLastTick = stamp
 	end
 end
 
@@ -457,4 +482,5 @@ return {
 	GetLatestCFrame = GetLatestCFrame,
 	RegisterNPC = RegisterNPC,
 	PushNPCTransform = PushNPCTransform,
+	UnregisterNPC = UnregisterNPC,
 }

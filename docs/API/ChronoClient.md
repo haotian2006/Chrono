@@ -10,6 +10,9 @@ Registers a **client-side NPC** for visual interpolation.
 - **`model`** – NPC model to interpolate  
 - **`npcType`** *(optional)* – Type key in `Config.NPC_TYPES`  
 
+:::tip
+This is automatically called when registered in NpcCache on the server.
+:::
 ---
 
 ### `idMap: { [number]: { ... } }`

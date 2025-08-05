@@ -24,7 +24,7 @@ local idMap = {} :: {
 	[number]: {
 		snapshot: Snapshots.CircularSnapshot<CFrame>,
 		character: Model?,
-		lastCFrame: CFrame?,
+		lastCFrame: CFrame?, 
 		isNPC: boolean?,
 		npcType: string?,
 	},
@@ -152,13 +152,37 @@ end
 
 local function RegisterClientNPC(id: number, model: Model, npcType: string?)
 	if not idMap[id] then
-		warn("Tried to register NPC that hasn't been replicated yet")
-		return
+		npcType = npcType or "DEFAULT"
+		idMap[id] = {
+			snapshot = Snapshots(CFrame.identity.Lerp),
+			character = nil,
+			lastCFrame = nil,
+			isNPC = true,
+			npcType = npcType,
+		}
+		RenderCache.Add(id, true, npcType)
 	end
 	idMap[id].character = model
 	if npcType then
 		idMap[id].npcType = npcType
 	end
+end
+
+local function UnregisterNPC(id: number): Model?
+	local data = idMap[id]
+	if not data then
+		return nil
+	end
+
+	if not data.character then
+		warn("Tried to unregister NPC that hasn't been registered yet")
+		return nil
+	end
+
+	RenderCache.Remove(id)
+	
+	idMap[id] = nil
+	return data.character
 end
 
 local function PlayerAdded(player: Player, id: number)
@@ -251,15 +275,7 @@ end)
 local function HandleReplicatedData(clientLastTicks, cframes)
 	for id, serverTime in clientLastTicks do
 		if not idMap[id] then
-			local npcType = "DEFAULT" --will be overrided once replicated & configed on the client
-			idMap[id] = {
-				snapshot = Snapshots(CFrame.identity.Lerp),
-				character = nil,
-				lastCFrame = nil,
-				isNPC = true,
-				npcType = npcType,
-			}
-			RenderCache.Add(id, true, npcType)
+			--moved to register entity lol
 		end
 
 		if not idMap[id].isNPC then
@@ -373,6 +389,7 @@ return {
 	BufferTracker = bufferTracker,
 
 	RegisterClientNPC = RegisterClientNPC,
+	UnregisterNPC = UnregisterNPC,
 	GetAllNetworkIds = function()
 		local ids = {}
 		for id, _ in idMap do
