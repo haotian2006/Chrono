@@ -10,9 +10,6 @@ The benchmarks measure **both Send and Receive (Recv) bandwidth**:
 
 - **Recv (Server → Client):**  
 - **Send (Client → Server):**  
-
-Measuring **both Send and Recv** gives a **complete view of network cost** for each replication framework.
-
 ---
 
 ## Benchmarked Scenarios
