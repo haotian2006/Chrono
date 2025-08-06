@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains **network replication benchmarks** comparing multiple replication methods in Roblox, including:
+Here I am comparing multiple replication frameworks in Roblox, including:
 
 - **Chrono**
 - **BetterReplication** (another custom replication library)
