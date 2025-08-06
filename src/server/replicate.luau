@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
+local Serializer = require(ReplicatedStorage.Packages.chrono.shared.Serializer)
 local Config = require(script.Parent.Parent.shared.config)
 local Snapshots = require(script.Parent.Parent.shared.snapshots)
 local Grid = require(script.Parent.Parent.shared.grid)
@@ -10,12 +11,13 @@ local Events = require(script.Parent.Parent.events.server)
 local config = require(script.Parent.Parent.shared.config)
 local Networkables = require(script.Parent.Parent.shared.makeNetworkable)
 
+
 local ClientReplicateCFrame = Instance.new("RemoteEvent")
 ClientReplicateCFrame.Name = "ClientReplicateCFrame"
 ClientReplicateCFrame.Parent = ReplicatedStorage
 
 local MAX_UNRELIABLE_BYTES = 900
-local SNAPSHOT_SIZE = 19
+local SNAPSHOT_SIZE = 18 + 3 -- assume worst cast for id (uInt)
 local HEADER_SIZE = 2
 local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
@@ -40,7 +42,7 @@ local lastReplicatedTimes = {} :: { [number]: number }
 local playerTickRates = {} :: { [number]: number }
 local replicators = {} :: { [number]: Model }
 
-local MAX_ID = 255
+local MAX_ID = 2^16-1
 local IncrementalFactoryUID = 0
 
 local function PackF16(float: number): number
@@ -72,13 +74,29 @@ local function PackF16(float: number): number
 	return result
 end
 
+local function WriteVlqRaw(b: buffer, index: number, value: number): number
+	value += 1
+	repeat
+		local byte = bit32.band(value, 0x7F)
+		value = bit32.rshift(value, 7)
+
+		if value > 0 then
+			byte = bit32.bor(byte, 0x80)
+		end
+
+		buffer.writeu8(b, index, byte)
+		index += 1
+	until value == 0
+	return index
+end
+
 local function PackSnapshotData(
 	buff: buffer,
 	offset: number,
 	timestamp: number,
 	cframe: { Position: Vector3, RotationY: number },
 	id: number
-)
+):number
 	buffer.writef32(buff, offset + 0, timestamp)
 
 	buffer.writef32(buff, offset + 4, cframe.Position.X)
@@ -86,7 +104,7 @@ local function PackSnapshotData(
 	buffer.writef32(buff, offset + 12, cframe.Position.Z)
 
 	buffer.writeu16(buff, offset + 16, PackF16(cframe.RotationY))
-	buffer.writeu8(buff, offset + 18, id)
+	return WriteVlqRaw(buff, offset + 18, id)
 end
 
 local function UnpackSnapshotData(
@@ -266,6 +284,9 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 end)
 
 local function UpdateTick(id: number, tickRate: number)
+	if id == 10 then
+		print("UpdateTick", tickRate)
+	end
 	Events.TickRateChanged.FireAll({
 		id = id,
 		tickRate = tickRate,
@@ -301,16 +322,15 @@ local function Flush(cframes, lastTicks, ids)
 	end
 
 	local buff = buffer.create(count * SNAPSHOT_SIZE)
-	local offset = 0
+	local offset = 	WriteVlqRaw(buff, 0, count)
 	for i = 1, count do
 		local index = #cframes
-		PackSnapshotData(buff, offset, lastTicks[index], cframes[index], ids[index])
+		offset = PackSnapshotData(buff, offset, lastTicks[index], cframes[index], ids[index])
 
 		cframes[index] = nil
 		lastTicks[index] = nil
 		ids[index] = nil
 
-		offset += SNAPSHOT_SIZE
 	end
 
 	ServerReplicateCFrame:FireAllClients(buff)
@@ -325,7 +345,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	local cframes = {}
 	local lastTicks = {}
 	local ids = {}
-
+	debug.profilebegin("ReplicateNPCs")
 	for id, data in idMap do
 		local character = data.player and data.player.Character or nil
 		local isNPC = data.serverOwned == true
@@ -337,7 +357,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			continue
 		end
 
-		local tickInterval = GetTickInterval(character, id)
+		local tickInterval = GetTickInterval(character or data.model, id)
 
 		local now = os.clock()
 		local lastReplicated = lastReplicatedTimes[id]
@@ -355,13 +375,24 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			cframe = (character :: any).HumanoidRootPart.CFrame
 		end
 
+		local lastSentCFrame = data.lastCFrame or CFrame.identity
+		local changed = vector.magnitude(lastSentCFrame.Position - cframe.Position :: any) >= 0.1
+		or not lastSentCFrame.Rotation:FuzzyEq(cframe.Rotation :: any, 0.0001)
+		data.lastCFrame = cframe
+
+		if not changed then
+			continue
+		end
+
 		table.insert(cframes, cframe)
 		table.insert(lastTicks, data.clientLastTick or now)
 		table.insert(ids, id)
 	end
+	debug.profileend()
 
+	debug.profilebegin("FlushNPCs")
 	Flush(Networkables.NetworkableYawCFrameTable(cframes), lastTicks, ids)
-
+	debug.profileend()
 	if not Config.DISABLE_DEFAULT_REPLICATION then
 		return
 	end
@@ -446,7 +477,6 @@ local function RegisterNPC(model: Model?, npcType: string?): number
 		if npcType ~= "DEFAULT" then
 			model:SetAttribute("NPC_TYPE", npcType)
 		end
-		Grid.AddEntity(model, "npc")
 	end
 
 	return id
