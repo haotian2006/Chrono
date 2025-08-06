@@ -1,8 +1,8 @@
-# NpcCache
+# NpcRegistry
 
 ## Initialization
 
-When required, NpcCache automatically:
+When required, NpcRegistry automatically:
 
 - Creates a **`NPCCacheCamera`** under `workspace` to hold **client clones**.
 - Creates or waits for a **`NPC_MODEL_CACHE`** folder in `ReplicatedStorage` for **replicated NPC models**.
@@ -49,7 +49,7 @@ Returns the **original model** for a given NPC ID, if registered.
 
 ## Client Behavior
 
-On the **client**, NpcCache:
+On the **client**, NpcRegistry:
 
 1. Clones each NPC into `workspace.NPCCacheCamera` for rendering.
 2. Registers the clone with `ClientReplicate` for **smooth interpolation**.
@@ -61,7 +61,7 @@ On the **client**, NpcCache:
 ## Usage Example
 
 ```lua
-local NpcCache = require(ReplicatedStorage.Packages.chrono.shared.npcCache)
+local NpcRegistry = require(ReplicatedStorage.Packages.chrono).NpcRegistry
 
 --Register npc on server
 local npcModel = workspace:WaitForChild("Goblin")

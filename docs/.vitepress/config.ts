@@ -23,9 +23,15 @@ function sidebar() {
         { text: "Snapshots", link: "/API/Snapshots" },
         { text: "InterpolationBuffer", link: "/API/Interpolation-Buffer" },
         { text: "RenderCache", link: "/API/RenderCache" },
-        { text: "NpcCache", link: "/API/NpcCache" },
+        { text: "NpcRegistry", link: "/API/NpcCache" },
       ] }
-    ]
+    ],
+    "/Benchmarks": [
+      { text: "Benchmarks", collapsed: false, items: [
+        { text: "Overview", link: "/Benchmarks/Overview" },
+        { text: "Comparison", link: "/Benchmarks/Comparison" },
+      ] }
+    ],
   }
 }
 

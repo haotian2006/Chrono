@@ -12,7 +12,10 @@ hero:
       link: /Learn/Why
     - theme: alt
       text: API Reference
-      link: /API/Interpolation-Buffer
+      link: /API/ChronoServer
+    - theme: alt
+      text: Benchmarks
+      link: /Benchmarks/Overview
     - theme: alt
       text: Github
       link: https://github.com/Parihsz/Chrono
