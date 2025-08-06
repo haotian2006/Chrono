@@ -48,8 +48,8 @@ NpcRegistry.Register(npcModel, "DEFAULT", "TestNPCs", true)
 
 #### Notes
 
-- If **no model** is passed, Chrono will still create a server‑owned NPC entry for headless tracking
-- `PushNPCTransform` **updates the NPC’s snapshot**, which Chrono automatically interpolates on all clients. Use this for headless tracking without a physical model
+- You must use ChronoServer/ChronoClient's npc registration function if you want to perform headless tracking without a model. NpcRegistry requires a model for it to work. 
+- `PushNPCTransform` **updates the NPC’s snapshot**, which Chrono automatically interpolates on all clients. NpcRegistry will automatically call this if you change the CFrame of a npc registered within it on the server.
 - NPCs are treated the same as players except they will have a fixed interpolation buffer
 
 ---
