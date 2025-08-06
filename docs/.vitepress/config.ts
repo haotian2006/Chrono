@@ -23,7 +23,7 @@ function sidebar() {
         { text: "Snapshots", link: "/API/Snapshots" },
         { text: "InterpolationBuffer", link: "/API/Interpolation-Buffer" },
         { text: "RenderCache", link: "/API/RenderCache" },
-        { text: "NpcRegistry", link: "/API/NpcCache" },
+        { text: "NpcRegistry", link: "/API/NpcRegistry" },
       ] }
     ],
     "/Benchmarks": [
