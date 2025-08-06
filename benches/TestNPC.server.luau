@@ -9,7 +9,7 @@ local ENABLED = false
 
 local USE_CHRONO = true
 local NUM_MODELS = 150
-local MODE:"FOLLOW"|"RANDOM" = "RANDOM"
+local MODE: "FOLLOW" | "RANDOM" = "RANDOM"
 local RATE = 0
 
 if not ENABLED then
@@ -23,24 +23,24 @@ Character.Archivable = true
 print("Starting test...")
 
 local function createModel()
-    local model 
-    if MODE == 'RANDOM' then
-        model = Instance.new("Model")
-        model.Name = "TestNPC_" .. #Models + 1
-        model.Parent = workspace
-        local part = Instance.new("Part")
-        part.Name = "HumanoidRootPart"
-        part.Size = Vector3.new(2, 5, 2)
-        part.Anchored = true
-        part.CanCollide = false
-        part.Parent = model
-        model.PrimaryPart = part
-    else
-        model = Character:Clone()
-        model.Parent = workspace
-        model.Name = "TestNPC_" .. #Models + 1
-        model.Humanoid.DisplayName = model.Name
-    end
+	local model
+	if MODE == "RANDOM" then
+		model = Instance.new("Model")
+		model.Name = "TestNPC_" .. #Models + 1
+		model.Parent = workspace
+		local part = Instance.new("Part")
+		part.Name = "HumanoidRootPart"
+		part.Size = Vector3.new(2, 5, 2)
+		part.Anchored = true
+		part.CanCollide = false
+		part.Parent = model
+		model.PrimaryPart = part
+	else
+		model = Character:Clone()
+		model.Parent = workspace
+		model.Name = "TestNPC_" .. #Models + 1
+		model.Humanoid.DisplayName = model.Name
+	end
 
 	if USE_CHRONO then
 		Chrono.Register(model, "DEFAULT", "TestNPCs", true)
@@ -54,20 +54,20 @@ end
 
 local function move()
 	for i, v in Models do
-        if MODE == "RANDOM" then
-            v.PrimaryPart.Anchored = true
+		if MODE == "RANDOM" then
+			v.PrimaryPart.Anchored = true
 			v:PivotTo(CFrame.new(math.random(-100, 100), math.random(-100, 100), math.random(-100, 100)))
-        elseif MODE == "FOLLOW" then
-            v.Humanoid:MoveTo(Player.Character.HumanoidRootPart.Position)
+		elseif MODE == "FOLLOW" then
+			v.Humanoid:MoveTo(Player.Character.HumanoidRootPart.Position)
 		end
 	end
 end
 
 task.spawn(function()
-    while true do
-        move()
-        task.wait(RATE)
-    end
+	while true do
+		move()
+		task.wait(RATE)
+	end
 end)
 
 return nil

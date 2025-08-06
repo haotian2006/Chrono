@@ -10,7 +10,7 @@ if not ENABLED then
 end
 
 task.wait(2)
-local direction = Random.new():NextUnitVector() 
+local direction = Random.new():NextUnitVector()
 RunService.RenderStepped:Connect(function()
 	PlayerLocal:Move(direction)
 end)
