@@ -21,8 +21,8 @@ event ServerReplicateCFrame {
     type: Unreliable,
     call: SingleSync,
     data: struct {
-        timestamps: map {[u8]: f32},
-        cframes: map {[u8]: Transform},
+        timestamps: map {[u16]: f32},
+        cframes: map {[u16]: Transform},
     }
 }
 
@@ -31,7 +31,7 @@ event TickRateChanged {
     type: Reliable,
     call: SingleSync,
     data: struct {
-        id: u8,
+        id: u16,
         tickRate: f32,
     }
 }
@@ -41,7 +41,7 @@ event InitializePlayer {
     type: Reliable,
     call: ManyAsync,
     data: struct {
-        id: u8,
+        id: u16,
         player: string,
     }
 }
@@ -51,7 +51,7 @@ event InitializeExistingPlayers {
     type: Reliable,
     call: ManyAsync,
     data: struct {
-        id: u8,
+        id: u16,
         player: string,
     }[]
 }

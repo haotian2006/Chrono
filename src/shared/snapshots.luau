@@ -16,6 +16,9 @@ export type CircularSnapshot<T> = {
 local MAX_LENGTH = 30
 local MAX_T = 256
 local HALF_T = MAX_T // 2
+local SHOW_WARNINGS = false
+
+local warn = SHOW_WARNINGS and warn or function() end
 
 -- for lune test
 local map: typeof(math.map) = math.map

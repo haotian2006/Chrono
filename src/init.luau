@@ -1,5 +1,19 @@
 local RunService = game:GetService("RunService")
 
+local NpcCache = require(script.shared.npcCache)
+local ServerReplicate
+local ClientReplicate 
+local InterpolationBuffer 
+local RenderCache
+
+if RunService:IsServer() then
+	ServerReplicate = require(script.server.replicate)
+else
+	ClientReplicate = require(script.client.replicate)
+	InterpolationBuffer = require(script.client.interpolationBuffer)
+	RenderCache = require(script.client.renderCache)
+end
+
 local function LoadFolder(folder: Folder)
 	for _, moduleScript in folder:GetDescendants() do
 		if moduleScript:IsA("ModuleScript") then
@@ -29,5 +43,13 @@ function Chrono.Start()
 	LoadFolder(if RunService:IsServer() then script.server else script.client)
 	LoadFolder(script.shared)
 end
+
+Chrono.ChronoClient = ClientReplicate
+Chrono.ChronoServer = ServerReplicate
+Chrono.NpcRegistry = NpcCache
+Chrono.Snapshots = require(script.shared.snapshots)
+Chrono.InterpolationBuffer = InterpolationBuffer
+Chrono.RenderCache = RenderCache
+
 
 return Chrono

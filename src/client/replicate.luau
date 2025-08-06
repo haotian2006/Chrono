@@ -43,6 +43,20 @@ RenderCache.Init({
 
 local playerNetworkId = 300
 
+local function ReadVlqRaw(b: buffer, index: number): (number, number)
+	local value = 0
+	local shift = 0
+	local byte: number
+
+	repeat
+		byte = buffer.readu8(b, index)
+		value += bit32.lshift(bit32.band(byte, 0x7F), shift)
+		shift += 7
+		index += 1
+	until byte < 0x80
+	return value-1, index
+end
+
 local function PackF16(float: number): number
 	if float > 65504 then
 		return 0b0_11111_0000000000
@@ -75,7 +89,7 @@ end
 local function UnpackSnapshotData(
 	buff: buffer,
 	offset: number
-): { timestamp: number, cframe: { Position: Vector3, RotationY: number }, id: number }
+): ({ timestamp: number, cframe: { Position: Vector3, RotationY: number }, id: number },number)
 	local value = {}
 	value.timestamp = buffer.readf32(buff, offset + 0)
 
@@ -86,7 +100,7 @@ local function UnpackSnapshotData(
 	value.cframe.Position = Vector3.new(x, y, z)
 
 	local encoded = buffer.readu16(buff, offset + 16)
-	local id = buffer.readu8(buff, offset + 18)
+	local id, newOffset = ReadVlqRaw(buff, offset + 18)
 	local mantissaExponent = encoded % 0x8000
 	value.id = id
 
@@ -111,7 +125,7 @@ local function UnpackSnapshotData(
 		value.cframe.RotationY = if encoded // 0x8000 == 1 then -result else result
 	end
 
-	return value
+	return value,newOffset
 end
 
 local function PackSnapshotData(
@@ -300,13 +314,12 @@ local function HandleReplicatedData(clientLastTicks, cframes)
 end
 
 ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)
-	local offset = 0
 	local cframes = {}
 	local timestamps = {}
-
-	for i = 1, buffer.len(snapshotBuffer) // SNAPSHOT_SIZE do
-		local snapshot = UnpackSnapshotData(snapshotBuffer, offset)
-		offset += SNAPSHOT_SIZE
+	local count,offset = ReadVlqRaw(snapshotBuffer, 0)
+	for i = 1, count do
+		local snapshot,offset_ = UnpackSnapshotData(snapshotBuffer, offset)
+		offset = offset_
 
 		local id = snapshot.id
 		cframes[id] = snapshot.cframe
@@ -323,31 +336,44 @@ end)
 RunService.PreRender:Connect(function(deltaTime: number)
 	RenderCache.Update(deltaTime)
 
+	local parts = {}
+	local cframes = {}
+	local index = 0
+	debug.profilebegin("Calculate CFrames")
 	for id, data in idMap do
 		if not data.character or data.character == player.Character then
 			continue
 		end
 
-		local humanoidRootPart = data.character:FindFirstChild("HumanoidRootPart")
-		if not humanoidRootPart or not humanoidRootPart:IsA("BasePart") then
+		local primaryPart = data.character.PrimaryPart
+		if not primaryPart then
 			continue
 		end
 
+		debug.profilebegin("Get Target CFrame")
 		local targetRenderTime = RenderCache.GetTargetRenderTime(id)
 		local targetCFrame = data.snapshot:GetAt(targetRenderTime)
+		debug.profileend()
 
+		debug.profilebegin("Prepare CFrame")
 		if targetCFrame then
 			data.lastCFrame = targetCFrame
 
 			-- make sure it isn't welded to anything else (e.g. being carried)
 
-			if humanoidRootPart.AssemblyRootPart == humanoidRootPart then
-				humanoidRootPart.CFrame = targetCFrame
+			if primaryPart.AssemblyRootPart == primaryPart then
+				index += 1
+				parts[index] = primaryPart
+				cframes[index] = targetCFrame
 			end
 		end
+		debug.profileend()
 	end
+	debug.profileend()
+	workspace:BulkMoveTo(parts, cframes)
 end)
 
+local lastSentCFrame = CFrame.identity
 RunService.PostSimulation:Connect(function()
 	if os.clock() - lastSent < (playerTickRates[playerNetworkId] or Config.TICK_RATE) then
 		return
@@ -365,10 +391,14 @@ RunService.PostSimulation:Connect(function()
 
 	local currentCFrame = humanoidRootPart.CFrame
 	--TODO: don't send cframe when player doesn't move
-	--local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
-	--or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.1)
+	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
+	or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.0001)
 
-	--lastSentCFrame = currentCFrame
+	lastSentCFrame = currentCFrame
+
+	if not changed then
+		return
+	end
 
 	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
 	-- this allows for much nicer compression since I am using quaternions
