@@ -11,9 +11,9 @@ local IS_SERVER = RunService:IsServer()
 local ClientReplicate
 local ServerReplicate
 if IS_CLIENT then
-	ClientReplicate = require(ReplicatedStorage.Packages.chrono.client.replicate)
+	ClientReplicate = require(script.Parent.Parent.client.replicate)
 else
-	ServerReplicate = require(ReplicatedStorage.Packages.chrono.server.replicate)
+	ServerReplicate = require(script.Parent.Parent.server.replicate)
 end
 
 local CAMERA = Instance.new("Camera", workspace)
@@ -38,7 +38,7 @@ local function ClientRegister(model: Model)
 	local clone = model:Clone()
 	clone.Name = tostring(id)
 	clone.Parent = CAMERA
-    clone.PrimaryPart.Anchored = true
+	clone.PrimaryPart.Anchored = true
 	ClientReplicate.RegisterClientNPC(id, clone, npcType)
 
 	model.AncestryChanged:Connect(function()
@@ -75,9 +75,9 @@ function Npc.Register(model: Model, npcType: string?, folderName: string?, autom
 	Cache[id] = model
 	model.Parent = folder
 
-    pcall(function()
-        model.PrimaryPart:SetNetworkOwner(nil)
-    end)
+	pcall(function()
+		model.PrimaryPart:SetNetworkOwner(nil)
+	end)
 
 	local clone = model:Clone()
 	clone.Name = tostring(id)
@@ -125,22 +125,22 @@ if IS_CLIENT then
 	end)
 	Check()
 else
-    local lastCFrames = {}
+	local lastCFrames = {}
 	RunService.PreSimulation:Connect(function(dt)
 		local now = os.clock()
-        debug.profilebegin("Check Npc CFrames")
-        local toCompare = lastCFrames
-        lastCFrames = {}
+		debug.profilebegin("Check Npc CFrames")
+		local toCompare = lastCFrames
+		lastCFrames = {}
 		for id, model in AutomaticNpc do
-            local cf = model:GetPivot()
-            local lastCF = toCompare[id] or CFrame.new(0,-math.huge,0)
-            lastCFrames[id] = cf
-            if cf:FuzzyEq(lastCF) then
-                continue
-            end
+			local cf = model:GetPivot()
+			local lastCF = toCompare[id] or CFrame.new(0, -math.huge, 0)
+			lastCFrames[id] = cf
+			if cf:FuzzyEq(lastCF) then
+				continue
+			end
 			ServerReplicate.PushNPCTransform(id, cf, now)
 		end
-        debug.profileend()
+		debug.profileend()
 	end)
 end
 

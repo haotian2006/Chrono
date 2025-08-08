@@ -3,14 +3,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local Serializer = require(ReplicatedStorage.Packages.chrono.shared.Serializer)
+local Serializer = require(script.Parent.Parent.shared.serializer)
 local Config = require(script.Parent.Parent.shared.config)
 local Snapshots = require(script.Parent.Parent.shared.snapshots)
 local Grid = require(script.Parent.Parent.shared.grid)
 local Events = require(script.Parent.Parent.events.server)
 local config = require(script.Parent.Parent.shared.config)
 local Networkables = require(script.Parent.Parent.shared.makeNetworkable)
-
 
 local ClientReplicateCFrame = Instance.new("RemoteEvent")
 ClientReplicateCFrame.Name = "ClientReplicateCFrame"
@@ -42,7 +41,7 @@ local lastReplicatedTimes = {} :: { [number]: number }
 local playerTickRates = {} :: { [number]: number }
 local replicators = {} :: { [number]: Model }
 
-local MAX_ID = 2^16-1
+local MAX_ID = 2 ^ 16 - 1
 local IncrementalFactoryUID = 0
 
 local function PackF16(float: number): number
@@ -96,7 +95,7 @@ local function PackSnapshotData(
 	timestamp: number,
 	cframe: { Position: Vector3, RotationY: number },
 	id: number
-):number
+): number
 	buffer.writef32(buff, offset + 0, timestamp)
 
 	buffer.writef32(buff, offset + 4, cframe.Position.X)
@@ -322,7 +321,7 @@ local function Flush(cframes, lastTicks, ids)
 	end
 
 	local buff = buffer.create(count * SNAPSHOT_SIZE)
-	local offset = 	WriteVlqRaw(buff, 0, count)
+	local offset = WriteVlqRaw(buff, 0, count)
 	for i = 1, count do
 		local index = #cframes
 		offset = PackSnapshotData(buff, offset, lastTicks[index], cframes[index], ids[index])
@@ -330,7 +329,6 @@ local function Flush(cframes, lastTicks, ids)
 		cframes[index] = nil
 		lastTicks[index] = nil
 		ids[index] = nil
-
 	end
 
 	ServerReplicateCFrame:FireAllClients(buff)
@@ -377,7 +375,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 		local lastSentCFrame = data.lastCFrame or CFrame.identity
 		local changed = vector.magnitude(lastSentCFrame.Position - cframe.Position :: any) >= 0.1
-		or not lastSentCFrame.Rotation:FuzzyEq(cframe.Rotation :: any, 0.0001)
+			or not lastSentCFrame.Rotation:FuzzyEq(cframe.Rotation :: any, 0.0001)
 		data.lastCFrame = cframe
 
 		if not changed then
