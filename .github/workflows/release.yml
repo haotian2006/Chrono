@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write  
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  upload-wally:
+    name: Publish to Wally
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.1.0
+
+      - name: Log into Wally
+        run: wally login --token "${{ secrets.WALLY_SECRET }}"
+
+      - name: Publish to Wally
+        run: wally publish || echo "failed to publish to wally, continuing..."
+
+  upload-build:
+    name: Build & Attach .rbxm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Setup Rokit
+        uses: CompeyDev/setup-rokit@v0.1.0
+
+      - name: Build rbxm
+        run: rojo build default.project.json -o build.rbxm
+
+      - name: Upload asset to GitHub Release
+        run: gh release upload "${{ github.event.release.tag_name }}" build.rbxm --clobber
