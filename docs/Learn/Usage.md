@@ -52,6 +52,9 @@ NpcRegistry.Register(npcModel, "DEFAULT", "TestNPCs", true)
 - `PushNPCTransform` **updates the NPC’s snapshot**, which Chrono automatically interpolates on all clients. NpcRegistry will automatically call this if you change the CFrame of a npc registered within it on the server.
 - NPCs are treated the same as players except they will have a fixed interpolation buffer
 
+:::danger
+Animations are non replicated from server to client. If you want NPC animations to be visible, you must play them on the clients. This is also idiomatic as it optimizes roblox transforms. 
+:::
 ---
 
 ### Getting the Latest CFrame

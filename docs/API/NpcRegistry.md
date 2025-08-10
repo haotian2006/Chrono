@@ -57,6 +57,9 @@ On the **client**, NpcRegistry:
 
 ---
 
+:::danger
+Animations are non replicated from server to client. If you want NPC animations to be visible, you must play them on the clients. This is also idiomatic as it optimizes roblox transforms. 
+:::
 
 ## Usage Example
 
