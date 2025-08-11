@@ -11,7 +11,7 @@ local Events = require(script.Parent.Parent.events.server)
 local config = require(script.Parent.Parent.shared.config)
 local Networkables = require(script.Parent.Parent.shared.makeNetworkable)
 
-local ClientReplicateCFrame = Instance.new("RemoteEvent")
+local ClientReplicateCFrame = Instance.new("UnreliableRemoteEvent")
 ClientReplicateCFrame.Name = "ClientReplicateCFrame"
 ClientReplicateCFrame.Parent = ReplicatedStorage
 
@@ -20,7 +20,7 @@ local SNAPSHOT_SIZE = 18 + 3 -- assume worst cast for id (uInt)
 local HEADER_SIZE = 2
 local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
-local ServerReplicateCFrame = Instance.new("RemoteEvent")
+local ServerReplicateCFrame = Instance.new("UnreliableRemoteEvent")
 ServerReplicateCFrame.Name = "ServerReplicateCFrame"
 ServerReplicateCFrame.Parent = ReplicatedStorage
 
@@ -373,10 +373,10 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			cframe = (character :: any).HumanoidRootPart.CFrame
 		end
 
-		local lastSentCFrame = data.lastCFrame or CFrame.identity
+		local lastSentCFrame = (data :: any).lastCFrame or CFrame.identity
 		local changed = vector.magnitude(lastSentCFrame.Position - cframe.Position :: any) >= 0.1
-			or not lastSentCFrame.Rotation:FuzzyEq(cframe.Rotation :: any, 0.0001)
-		data.lastCFrame = cframe
+			or not lastSentCFrame.Rotation:FuzzyEq(cframe.Rotation :: any, 0.0001);
+		(data :: any).lastCFrame = cframe
 
 		if not changed then
 			continue

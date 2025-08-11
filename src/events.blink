@@ -1,5 +1,6 @@
 option ClientOutput = "./events/client"
 option ServerOutput = "./events/server"
+option RemoteScope = "CHRONO"
 
 struct Transform {
     Position: vector<f32>,

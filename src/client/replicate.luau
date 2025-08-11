@@ -17,14 +17,14 @@ local MAX_BATCH = (MAX_UNRELIABLE_BYTES - HEADER_SIZE) // SNAPSHOT_SIZE
 
 local outgoingSnapshots = {} :: { { timestamp: number, cframe: { Position: Vector3, RotationY: number } } }
 
-local ClientReplicateCFrame: RemoteEvent = ReplicatedStorage:WaitForChild("ClientReplicateCFrame") :: any
-local ServerReplicateCFrame: RemoteEvent = ReplicatedStorage:WaitForChild("ServerReplicateCFrame") :: any
+local ClientReplicateCFrame: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("ClientReplicateCFrame") :: any
+local ServerReplicateCFrame: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("ServerReplicateCFrame") :: any
 
 local idMap = {} :: {
 	[number]: {
 		snapshot: Snapshots.CircularSnapshot<CFrame>,
 		character: Model?,
-		lastCFrame: CFrame?, 
+		lastCFrame: CFrame?,
 		isNPC: boolean?,
 		npcType: string?,
 	},
@@ -54,7 +54,7 @@ local function ReadVlqRaw(b: buffer, index: number): (number, number)
 		shift += 7
 		index += 1
 	until byte < 0x80
-	return value-1, index
+	return value - 1, index
 end
 
 local function PackF16(float: number): number
@@ -89,7 +89,10 @@ end
 local function UnpackSnapshotData(
 	buff: buffer,
 	offset: number
-): ({ timestamp: number, cframe: { Position: Vector3, RotationY: number }, id: number },number)
+): (
+	{ timestamp: number, cframe: { Position: Vector3, RotationY: number }, id: number },
+	number
+)
 	local value = {}
 	value.timestamp = buffer.readf32(buff, offset + 0)
 
@@ -125,7 +128,7 @@ local function UnpackSnapshotData(
 		value.cframe.RotationY = if encoded // 0x8000 == 1 then -result else result
 	end
 
-	return value,newOffset
+	return value, newOffset
 end
 
 local function PackSnapshotData(
@@ -194,7 +197,7 @@ local function UnregisterNPC(id: number): Model?
 	end
 
 	RenderCache.Remove(id)
-	
+
 	idMap[id] = nil
 	return data.character
 end
@@ -316,9 +319,9 @@ end
 ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)
 	local cframes = {}
 	local timestamps = {}
-	local count,offset = ReadVlqRaw(snapshotBuffer, 0)
+	local count, offset = ReadVlqRaw(snapshotBuffer, 0)
 	for i = 1, count do
-		local snapshot,offset_ = UnpackSnapshotData(snapshotBuffer, offset)
+		local snapshot, offset_ = UnpackSnapshotData(snapshotBuffer, offset)
 		offset = offset_
 
 		local id = snapshot.id
@@ -392,7 +395,7 @@ RunService.PostSimulation:Connect(function()
 	local currentCFrame = humanoidRootPart.CFrame
 	--TODO: don't send cframe when player doesn't move
 	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
-	or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.0001)
+		or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.0001)
 
 	lastSentCFrame = currentCFrame
 

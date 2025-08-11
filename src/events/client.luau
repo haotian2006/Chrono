@@ -9,7 +9,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local BASE_EVENT_NAME = "BLINK"
+local BASE_EVENT_NAME = "CHRONO_BLINK"
 local Invocations = 0
 
 local SendSize = 64
