@@ -282,9 +282,10 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 	end
 end)
 
-local function TogglePlayerReplication(id: number, on: boolean)
-	if idMap[id].serverOwned then
-		warn("TogglePlayerReplication can only be called for players.")
+local function TogglePlayerReplication(player: Player, on: boolean)
+	local id = playerIdMap[player]
+	if not id then
+		warn("TogglePlayerReplication: Player not found in idMap")
 		return
 	end
 

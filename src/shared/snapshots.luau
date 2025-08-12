@@ -11,6 +11,7 @@ export type CircularSnapshot<T> = {
 	Push: (self: CircularSnapshot<T>, t: number, value: T) -> (),
 	GetLatest: (self: CircularSnapshot<T>) -> SnapshotData<T>?,
 	GetAt: (self: CircularSnapshot<T>, t: number) -> T?,
+	Clear: (self: CircularSnapshot<T>) -> (),
 }
 
 local MAX_LENGTH = 30
@@ -177,6 +178,11 @@ local function GetAt<T>(self: CircularSnapshot<T>, at: number): T?
 	return nil
 end
 
+local function Clear(self: CircularSnapshot<T>): ()
+	self.cache = {}
+	self.pivotIndex = nil
+end
+
 local function new<T>(lerp: (T, T, number) -> T): CircularSnapshot<T>
 	return {
 		cache = {},
@@ -186,6 +192,7 @@ local function new<T>(lerp: (T, T, number) -> T): CircularSnapshot<T>
 		Push = Push,
 		GetLatest = GetLatest,
 		GetAt = GetAt,
+		Clear = Clear,
 	}
 end
 

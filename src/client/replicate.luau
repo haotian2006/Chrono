@@ -354,6 +354,7 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		end
 
 		if pausedPlayers[id] then
+			data.snapshot:Clear()
 			continue
 		end
 
