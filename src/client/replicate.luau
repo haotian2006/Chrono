@@ -291,11 +291,7 @@ end)
 
 local function HandleReplicatedData(clientLastTicks, cframes)
 	for id, serverTime in clientLastTicks do
-		if not idMap[id] then
-			--moved to register entity lol
-		end
-
-		if not idMap[id].isNPC then
+		if  idMap[id] and not idMap[id].isNPC then
 			bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
 		end
 	end
