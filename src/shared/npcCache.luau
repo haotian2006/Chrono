@@ -37,8 +37,7 @@ local function ClientRegister(model: Model)
 	local clone = model:Clone()
 	clone.Name = tostring(id)
 	clone.Parent = CAMERA
-	(clone.PrimaryPart :: any).Anchored = true
-	Cache[id] = clone
+	clone.PrimaryPart.Anchored = true
 	ClientReplicate.RegisterClientNPC(id, clone, npcType)
 
 	model.AncestryChanged:Connect(function()
@@ -55,7 +54,7 @@ local function Check()
 		if not npc:IsA("Model") then
 			continue
 		end
-		task.defer(ClientRegister, npc)
+		ClientRegister(npc)
 	end
 end
 
