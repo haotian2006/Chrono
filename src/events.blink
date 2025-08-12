@@ -37,6 +37,16 @@ event TickRateChanged {
     }
 }
 
+event TogglePlayerReplication {
+    from: Server,
+    type: Reliable,
+    call: SingleSync,
+    data: struct {
+        id: u16,
+        on: boolean,
+    }
+}
+
 event InitializePlayer {
     from: Server,
     type: Reliable,

@@ -2,12 +2,14 @@ local RunService = game:GetService("RunService")
 
 local NpcCache = require(script.shared.npcCache)
 local ServerReplicate
-local ClientReplicate 
-local InterpolationBuffer 
+local ClientReplicate
+local InterpolationBuffer
 local RenderCache
+local TogglePlayerReplication
 
 if RunService:IsServer() then
 	ServerReplicate = require(script.server.replicate)
+	TogglePlayerReplication = ServerReplicate.TogglePlayerReplication
 else
 	ClientReplicate = require(script.client.replicate)
 	InterpolationBuffer = require(script.client.interpolationBuffer)
@@ -50,6 +52,6 @@ Chrono.NpcRegistry = NpcCache
 Chrono.Snapshots = require(script.shared.snapshots)
 Chrono.InterpolationBuffer = InterpolationBuffer
 Chrono.RenderCache = RenderCache
-
+Chrono.TogglePlayerReplication = TogglePlayerReplication
 
 return Chrono

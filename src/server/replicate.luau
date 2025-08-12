@@ -36,6 +36,7 @@ local idMap = {} :: {
 		model: Model?,
 	},
 }
+local pausedPlayers = {} :: { [number]: boolean }
 
 local lastReplicatedTimes = {} :: { [number]: number }
 local playerTickRates = {} :: { [number]: number }
@@ -282,6 +283,27 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 	end
 end)
 
+local function TogglePlayerReplication(id: number, on: boolean)
+	if idMap[id].serverOwned then
+		warn("TogglePlayerReplication can only be called for players.")
+		return
+	end
+
+	if on then
+		pausedPlayers[id] = nil
+		Events.TogglePlayerReplication.FireAll({
+			id = id,
+			on = true,
+		})
+	else
+		pausedPlayers[id] = true
+		Events.TogglePlayerReplication.FireAll({
+			id = id,
+			on = false,
+		})
+	end
+end
+
 local function UpdateTick(id: number, tickRate: number)
 	if id == 10 then
 		print("UpdateTick", tickRate)
@@ -352,6 +374,10 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			not isNPC
 			and (not character or not character:FindFirstChild("HumanoidRootPart") or not data.clientLastTick)
 		then
+			continue
+		end
+
+		if pausedPlayers[id] then
 			continue
 		end
 
@@ -511,4 +537,6 @@ return {
 	RegisterNPC = RegisterNPC,
 	PushNPCTransform = PushNPCTransform,
 	UnregisterNPC = UnregisterNPC,
+
+	TogglePlayerReplication = TogglePlayerReplication,
 }

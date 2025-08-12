@@ -152,10 +152,11 @@ local Queue: any = {
 
 Queue.Unreliable[1] = table.create(256)
 Queue.Reliable[0] = table.create(256)
-Events.Reliable[1] = {}
 Queue.Reliable[1] = table.create(256)
 Events.Reliable[2] = {}
 Queue.Reliable[2] = table.create(256)
+Events.Reliable[3] = {}
+Queue.Reliable[3] = table.create(256)
 export type Transform = { Position: Vector3, RotationY: number }
 local function WriteEVENT_ClientReplicateCFrame(Value: { timestamp: number, cframe: { Position: Vector3, RotationY: number } }): ()
 	-- Allocate BLOCK: 19 bytes
@@ -256,6 +257,15 @@ local function ReadEVENT_TickRateChanged(): ({ id: number, tickRate: number })
 	return Value
 end
 
+local function ReadEVENT_TogglePlayerReplication(): ({ id: number, on: boolean })
+	-- Read BLOCK: 3 bytes
+	local BLOCK_START = Read(3)
+	local Value = {} :: any
+	Value.id = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
+	Value.on = (buffer.readu8(RecieveBuffer, BLOCK_START + 2) == 1)
+	return Value
+end
+
 local function ReadEVENT_InitializePlayer(): ({ id: number, player: string })
 	-- Read BLOCK: 4 bytes
 	local BLOCK_START = Read(4)
@@ -303,6 +313,9 @@ if not RunService:IsRunning() then
 		On = NOOP
 	},
 	TickRateChanged = {
+		On = NOOP
+	},
+	TogglePlayerReplication = {
 		On = NOOP
 	},
 	InitializePlayer = {
@@ -359,28 +372,38 @@ Reliable.OnClientEvent:Connect(function(Buffer: buffer, Instances: {Instance})
 				table.insert(Queue.Reliable[0], {Value} :: {any})
 			end
 		elseif Index == 1 then
-			local Value: { id: number, player: string } = ReadEVENT_InitializePlayer()
-			if #Events.Reliable[1] > 0 then
-				for _, Listener in Events.Reliable[1] do
-					task.spawn(Listener, Value)
-				end
+			local Value: { id: number, on: boolean } = ReadEVENT_TogglePlayerReplication()
+			if Events.Reliable[1] ~= nil then
+				Events.Reliable[1](Value)
 			else
 				if #Queue.Reliable[1] > 256 then
-					warn("[Blink]: Event queue of \"InitializePlayer\" exceeded 256, did you forget to implement a listener?")
+					warn("[Blink]: Event queue of \"TogglePlayerReplication\" exceeded 256, did you forget to implement a listener?")
 				end
 				table.insert(Queue.Reliable[1], {Value} :: {any})
 			end
 		elseif Index == 2 then
-			local Value: { { id: number, player: string } } = ReadEVENT_InitializeExistingPlayers()
+			local Value: { id: number, player: string } = ReadEVENT_InitializePlayer()
 			if #Events.Reliable[2] > 0 then
 				for _, Listener in Events.Reliable[2] do
 					task.spawn(Listener, Value)
 				end
 			else
 				if #Queue.Reliable[2] > 256 then
-					warn("[Blink]: Event queue of \"InitializeExistingPlayers\" exceeded 256, did you forget to implement a listener?")
+					warn("[Blink]: Event queue of \"InitializePlayer\" exceeded 256, did you forget to implement a listener?")
 				end
 				table.insert(Queue.Reliable[2], {Value} :: {any})
+			end
+		elseif Index == 3 then
+			local Value: { { id: number, player: string } } = ReadEVENT_InitializeExistingPlayers()
+			if #Events.Reliable[3] > 0 then
+				for _, Listener in Events.Reliable[3] do
+					task.spawn(Listener, Value)
+				end
+			else
+				if #Queue.Reliable[3] > 256 then
+					warn("[Blink]: Event queue of \"InitializeExistingPlayers\" exceeded 256, did you forget to implement a listener?")
+				end
+				table.insert(Queue.Reliable[3], {Value} :: {any})
 			end
 		end
 	end
@@ -443,23 +466,22 @@ local Returns = table.freeze({
 			end
 		end
 	},
-	InitializePlayer = {
-		On = function(Listener: (Value: { id: number, player: string }) -> ()): () -> ()
-			table.insert(Events.Reliable[1], Listener)
+	TogglePlayerReplication = {
+		On = function(Listener: (Value: { id: number, on: boolean }) -> ()): () -> ()
+			Events.Reliable[1] = Listener
 			for Index, Arguments in Queue.Reliable[1] do
-				task.spawn(Listener, table.unpack(Arguments))
+				Listener(table.unpack(Arguments))
 			end
 			Queue.Reliable[1] = {}
 			return function (): ()
-				local Index = table.find(Events.Reliable[1], Listener)
-				if Index ~= nil then
-					table.remove(Events.Reliable[1], Index)
+				if Events.Reliable[1] == Listener then
+					Events.Reliable[1] = nil
 				end
 			end
 		end
 	},
-	InitializeExistingPlayers = {
-		On = function(Listener: (Value: { { id: number, player: string } }) -> ()): () -> ()
+	InitializePlayer = {
+		On = function(Listener: (Value: { id: number, player: string }) -> ()): () -> ()
 			table.insert(Events.Reliable[2], Listener)
 			for Index, Arguments in Queue.Reliable[2] do
 				task.spawn(Listener, table.unpack(Arguments))
@@ -469,6 +491,21 @@ local Returns = table.freeze({
 				local Index = table.find(Events.Reliable[2], Listener)
 				if Index ~= nil then
 					table.remove(Events.Reliable[2], Index)
+				end
+			end
+		end
+	},
+	InitializeExistingPlayers = {
+		On = function(Listener: (Value: { { id: number, player: string } }) -> ()): () -> ()
+			table.insert(Events.Reliable[3], Listener)
+			for Index, Arguments in Queue.Reliable[3] do
+				task.spawn(Listener, table.unpack(Arguments))
+			end
+			Queue.Reliable[3] = {}
+			return function (): ()
+				local Index = table.find(Events.Reliable[3], Listener)
+				if Index ~= nil then
+					table.remove(Events.Reliable[3], Index)
 				end
 			end
 		end

@@ -34,6 +34,7 @@ local player = Players.LocalPlayer
 local initializedPlayers = {} :: { [Player]: boolean }
 local characters = {} :: { [Player]: Model }
 local playerTickRates = {} :: { [number]: number }
+local pausedPlayers = {} :: { [number]: boolean }
 
 local bufferTracker = InterpolationBuffer(Config.MIN_BUFFER, Config.MAX_BUFFER, 0.1)
 RenderCache.Init({
@@ -289,13 +290,17 @@ Events.TickRateChanged.On(function(data)
 	playerTickRates[data.id] = data.tickRate
 end)
 
+Events.TogglePlayerReplication.On(function(data)
+	if data.on then
+		pausedPlayers[data.id] = nil
+	else
+		pausedPlayers[data.id] = true
+	end
+end)
+
 local function HandleReplicatedData(clientLastTicks, cframes)
 	for id, serverTime in clientLastTicks do
-		if not idMap[id] then
-			--moved to register entity lol
-		end
-
-		if not idMap[id].isNPC then
+		if idMap[id] and not idMap[id].isNPC then
 			bufferTracker.RegisterPacket(id, serverTime, playerTickRates[id] or Config.TICK_RATE)
 		end
 	end
@@ -348,6 +353,10 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			continue
 		end
 
+		if pausedPlayers[id] then
+			continue
+		end
+
 		local primaryPart = data.character.PrimaryPart
 		if not primaryPart then
 			continue
@@ -383,6 +392,10 @@ RunService.PostSimulation:Connect(function()
 	end
 	lastSent = os.clock()
 
+	if pausedPlayers[playerNetworkId] then
+		return
+	end
+
 	if not player.Character then
 		return
 	end
@@ -393,7 +406,7 @@ RunService.PostSimulation:Connect(function()
 	end
 
 	local currentCFrame = humanoidRootPart.CFrame
-	--TODO: don't send cframe when player doesn't move
+
 	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
 		or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.0001)
 
@@ -403,10 +416,6 @@ RunService.PostSimulation:Connect(function()
 		return
 	end
 
-	-- CFrames need to be made networkable. I am currently sending them as position: Vector3, rotation: {x, y, z} (omitting w because it can be calculated by x,y,z)
-	-- this allows for much nicer compression since I am using quaternions
-	-- currently sends CFrame even if player did not move due to nature of dynamic interpolation buffer (may change in the future when I think of a method)
-	-- local networkable = if changed then Networkables.MakeNetworkable(currentCFrame) else nil :: any
 	local networkable = Networkables.MakeYawNetworkable(currentCFrame)
 	table.insert(outgoingSnapshots, {
 		timestamp = os.clock(),

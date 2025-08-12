@@ -251,10 +251,18 @@ local function WriteEVENT_TickRateChanged(Value: { id: number, tickRate: number 
 	buffer.writef32(SendBuffer, BLOCK_START + 3, Value.tickRate)
 end
 
+local function WriteEVENT_TogglePlayerReplication(Value: { id: number, on: boolean }): ()
+	-- Allocate BLOCK: 4 bytes
+	local BLOCK_START = Allocate(4)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
+	buffer.writeu16(SendBuffer, BLOCK_START + 1, Value.id)
+	buffer.writeu8(SendBuffer, BLOCK_START + 3, Value.on and 1 or 0)
+end
+
 local function WriteEVENT_InitializePlayer(Value: { id: number, player: string }): ()
 	-- Allocate BLOCK: 5 bytes
 	local BLOCK_START = Allocate(5)
-	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 2)
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, Value.id)
 	local Length = #Value.player
 	buffer.writeu16(SendBuffer, BLOCK_START + 3, Length)
@@ -265,7 +273,7 @@ end
 local function WriteEVENT_InitializeExistingPlayers(Value: { { id: number, player: string } }): ()
 	-- Allocate BLOCK: 3 bytes
 	local BLOCK_START = Allocate(3)
-	buffer.writeu8(SendBuffer, BLOCK_START + 0, 2)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 3)
 	-- START ARRAY
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, #Value)
 		-- Allocate BLOCK: 4 bytes
@@ -300,6 +308,12 @@ if not RunService:IsRunning() then
 		FireExcept = NOOP
 	},
 	TickRateChanged = {
+		Fire = NOOP,
+		FireAll = NOOP,
+		FireList = NOOP,
+		FireExcept = NOOP
+	},
+	TogglePlayerReplication = {
 		Fire = NOOP,
 		FireAll = NOOP,
 		FireList = NOOP,
@@ -479,6 +493,52 @@ local Returns = table.freeze({
 		FireExcept = function(Except: Player, Value: { id: number, tickRate: number }): ()
 			Load()
 			WriteEVENT_TickRateChanged(Value)
+			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+			for _, Player in Players:GetPlayers() do
+				if Player == Except then
+					continue
+				end
+				Load(PlayersMap[Player])
+				local Position = Allocate(Size)
+				buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+				table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+				PlayersMap[Player] = Save()
+			end
+		end,
+	},
+	TogglePlayerReplication = {
+		Fire = function(Player: Player, Value: { id: number, on: boolean }): ()
+			Load(PlayersMap[Player])
+			WriteEVENT_TogglePlayerReplication(Value)
+			PlayersMap[Player] = Save()
+		end,
+		FireAll = function(Value: { id: number, on: boolean }): ()
+			Load()
+			WriteEVENT_TogglePlayerReplication(Value)
+			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+			for _, Player in Players:GetPlayers() do
+				Load(PlayersMap[Player])
+				local Position = Allocate(Size)
+				buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+				table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+				PlayersMap[Player] = Save()
+			end
+		end,
+		FireList = function(List: {Player}, Value: { id: number, on: boolean }): ()
+			Load()
+			WriteEVENT_TogglePlayerReplication(Value)
+			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+			for _, Player in List do
+				Load(PlayersMap[Player])
+				local Position = Allocate(Size)
+				buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+				table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+				PlayersMap[Player] = Save()
+			end
+		end,
+		FireExcept = function(Except: Player, Value: { id: number, on: boolean }): ()
+			Load()
+			WriteEVENT_TogglePlayerReplication(Value)
 			local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
 			for _, Player in Players:GetPlayers() do
 				if Player == Except then

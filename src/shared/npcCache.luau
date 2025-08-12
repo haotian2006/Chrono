@@ -34,15 +34,15 @@ local function ClientRegister(model: Model)
 		return
 	end
 
-	Cache[id] = model
 	local clone = model:Clone()
 	clone.Name = tostring(id)
 	clone.Parent = CAMERA
-	clone.PrimaryPart.Anchored = true
+	(clone.PrimaryPart :: any).Anchored = true
+	Cache[id] = clone
 	ClientReplicate.RegisterClientNPC(id, clone, npcType)
 
 	model.AncestryChanged:Connect(function()
-		if not model:IsDescendantOf(workspace) then
+		if not model.Parent then
 			ClientReplicate.UnregisterNPC(id)
 			Cache[id] = nil
 			clone:Destroy()
@@ -55,7 +55,7 @@ local function Check()
 		if not npc:IsA("Model") then
 			continue
 		end
-		ClientRegister(npc)
+		task.defer(ClientRegister, npc)
 	end
 end
 
@@ -76,12 +76,12 @@ function Npc.Register(model: Model, npcType: string?, folderName: string?, autom
 	model.Parent = folder
 
 	pcall(function()
-		model.PrimaryPart:SetNetworkOwner(nil)
+		(model.PrimaryPart :: any):SetNetworkOwner(nil)
 	end)
 
-	local clone = model:Clone()
+	local clone = model:Clone() --// MAKE SURE Archivable is set to true
 	clone.Name = tostring(id)
-	clone.Parent = NPC_MODEL_CACHE
+	clone.Parent = NPC_MODEL_CACHE --//This can be optimized in the future
 
 	if automaticUpdate then
 		AutomaticNpc[id] = model
@@ -118,7 +118,7 @@ end
 if IS_CLIENT then
 	NPC_MODEL_CACHE.ChildAdded:Connect(function(model)
 		if model:IsA("Model") then
-			ClientRegister(model)
+			task.defer(ClientRegister, model)
 		else
 			error("Npc cache: Child added is not a model (WHY, DO NOT TOUCH): " .. model:GetFullName())
 		end
