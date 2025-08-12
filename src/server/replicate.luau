@@ -3,7 +3,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
-local Serializer = require(script.Parent.Parent.shared.serializer)
 local Config = require(script.Parent.Parent.shared.config)
 local Snapshots = require(script.Parent.Parent.shared.snapshots)
 local Grid = require(script.Parent.Parent.shared.grid)
