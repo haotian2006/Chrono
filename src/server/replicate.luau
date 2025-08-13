@@ -388,7 +388,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		lastReplicatedTimes[id] = now
 
 		local latestSnapshot = data.snapshot:GetLatest()
-		local cframe
+		local cframe = CFrame.identity
 		if latestSnapshot then
 			cframe = latestSnapshot.value
 		elseif character and character:FindFirstChild("HumanoidRootPart") then
