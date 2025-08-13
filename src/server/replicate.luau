@@ -377,10 +377,6 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			continue
 		end
 
-		if pausedPlayers[id] then
-			continue
-		end
-
 		local tickInterval = GetTickInterval(character or data.model, id)
 
 		local now = os.clock()

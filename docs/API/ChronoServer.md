@@ -31,6 +31,15 @@ Returns the **latest replicated CFrame** for a:
 
 ---
 
+### `TogglePlayerReplication(player: Player, on: boolean)`
+
+Toggles whether Chrono should interpolate the player
+
+- **player** – Pass the `Player` instance  
+- **on** – Pass a boolean of whether chrono should interpolate
+
+---
+
 ## Notes
 
 - ChronoServer drives **all server-side replication**  

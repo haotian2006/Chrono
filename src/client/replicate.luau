@@ -354,7 +354,6 @@ RunService.PreRender:Connect(function(deltaTime: number)
 		end
 
 		if pausedPlayers[id] then
-			data.snapshot:Clear()
 			continue
 		end
 
@@ -392,10 +391,6 @@ RunService.PostSimulation:Connect(function()
 		return
 	end
 	lastSent = os.clock()
-
-	if pausedPlayers[playerNetworkId] then
-		return
-	end
 
 	if not player.Character then
 		return
