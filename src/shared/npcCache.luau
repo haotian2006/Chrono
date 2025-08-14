@@ -38,6 +38,7 @@ local function ClientRegister(model: Model)
 	clone.Name = tostring(id)
 	clone.Parent = CAMERA;
 	(clone.PrimaryPart :: any).Anchored = true
+	Cache[id] = clone 
 	ClientReplicate.RegisterClientNPC(id, clone, npcType)
 
 	model.AncestryChanged:Connect(function()
