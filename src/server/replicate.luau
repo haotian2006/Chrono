@@ -372,7 +372,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 		if
 			not isNPC
-			and (not character or not character:FindFirstChild("HumanoidRootPart") or not data.clientLastTick)
+			and (not character or not character.PrimaryPart or not data.clientLastTick)
 		then
 			continue
 		end
@@ -391,8 +391,8 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		local cframe = CFrame.identity
 		if latestSnapshot then
 			cframe = latestSnapshot.value
-		elseif character and character:FindFirstChild("HumanoidRootPart") then
-			cframe = (character :: any).HumanoidRootPart.CFrame
+		elseif character and character.PrimaryPart then
+			cframe = (character :: any).PrimaryPart.CFrame
 		end
 
 		local lastSentCFrame = (data :: any).lastCFrame or CFrame.identity
@@ -424,12 +424,12 @@ RunService.PostSimulation:Connect(function(deltaTime)
 	local targets = {}
 	for id, clone in replicators do
 		local data = idMap[id]
-		local humanoidRootPart = clone:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if data and data.snapshot and humanoidRootPart then
+		local primaryPart = clone.PrimaryPart :: BasePart?
+		if data and data.snapshot and primaryPart then
 			local latestSnapshot = data.snapshot:GetLatest()
 
 			if latestSnapshot then
-				table.insert(staged, humanoidRootPart)
+				table.insert(staged, primaryPart)
 				table.insert(targets, latestSnapshot.value)
 			end
 		end

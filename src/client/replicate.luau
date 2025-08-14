@@ -396,12 +396,12 @@ RunService.PostSimulation:Connect(function()
 		return
 	end
 
-	local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
-	if not humanoidRootPart or not humanoidRootPart:IsA("BasePart") then
+	local primaryPart = player.Character.PrimaryPart
+	if not primaryPart then
 		return
 	end
 
-	local currentCFrame = humanoidRootPart.CFrame
+	local currentCFrame = primaryPart.CFrame
 
 	local changed = vector.magnitude(lastSentCFrame.Position - currentCFrame.Position :: any) >= 0.1
 		or not lastSentCFrame.Rotation:FuzzyEq(currentCFrame.Rotation :: any, 0.0001)

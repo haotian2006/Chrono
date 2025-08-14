@@ -131,7 +131,10 @@ else
 		local toCompare = lastCFrames
 		lastCFrames = {}
 		for id, model in AutomaticNpc do
-			local cf = model:GetPivot()
+			if not model.PrimaryPart then
+				continue
+			end
+			local cf = model.PrimaryPart.CFrame
 			local lastCF = toCompare[id] or CFrame.new(0, -math.huge, 0)
 			lastCFrames[id] = cf
 			if cf:FuzzyEq(lastCF) then

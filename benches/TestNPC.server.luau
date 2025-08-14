@@ -5,11 +5,11 @@ local Chrono = require(ReplicatedStorage.Packages.chrono.shared.npcCache)
 
 local Models = {}
 
-local ENABLED = false
+local ENABLED = true
 
 local USE_CHRONO = true
-local NUM_MODELS = 150
-local MODE: "FOLLOW" | "RANDOM" = "RANDOM"
+local NUM_MODELS = 50
+local MODE: "FOLLOW" | "RANDOM" = "FOLLOW"
 local RATE = 0
 
 if not ENABLED then
