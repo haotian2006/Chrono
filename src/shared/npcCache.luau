@@ -125,22 +125,14 @@ if IS_CLIENT then
 	end)
 	Check()
 else
-	local lastCFrames = {}
-	RunService.PreSimulation:Connect(function(dt)
+	RunService.PostSimulation:Connect(function(dt)
 		local now = os.clock()
 		debug.profilebegin("Check Npc CFrames")
-		local toCompare = lastCFrames
-		lastCFrames = {}
 		for id, model in AutomaticNpc do
 			if not model.PrimaryPart then
 				continue
 			end
 			local cf = model.PrimaryPart.CFrame
-			local lastCF = toCompare[id] or CFrame.new(0, -math.huge, 0)
-			lastCFrames[id] = cf
-			if cf:FuzzyEq(lastCF) then
-				continue
-			end
 			ServerReplicate.PushNPCTransform(id, cf, now)
 		end
 		debug.profileend()

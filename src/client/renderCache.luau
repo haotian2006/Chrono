@@ -26,8 +26,11 @@ local function GetBuffer(id: number): number
 	if isNPCMap[id] then
 		local npcType = npcTypeMap[id] or "DEFAULT"
 		local npcConfig = Config.NPC_TYPES[npcType]
-
-		return npcConfig and npcConfig.BUFFER or 0
+		if not npcConfig then
+			warn(`RenderCache: No NPC config found for type {npcType}. Make sure to define it in the config`)
+			npcConfig = Config.NPC_TYPES["DEFAULT"]
+		end
+		return npcConfig
 	else
 		return BufferTracker.GetBuffer(id, playerTickRates[id] or Config.TICK_RATE)
 	end
