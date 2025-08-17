@@ -58,35 +58,6 @@ local function ReadVlqRaw(b: buffer, index: number): (number, number)
 	return value - 1, index
 end
 
-local function PackF16(float: number): number
-	if float > 65504 then
-		return 0b0_11111_0000000000
-	end
-	if float < -65504 then
-		return 0b1_11111_0000000000
-	end
-	if float ~= float then
-		return 0b1_11111_0000000001
-	end
-	if float == 0 then
-		return 0
-	end
-
-	local absolute = math.abs(float)
-	local interval = math.ldexp(1, math.floor(math.log(absolute, 2)) - 10)
-	local rounded = (absolute // interval) * interval
-	local fraction, exponent = math.frexp(rounded)
-	exponent += 14
-
-	local mantissa = math.round(
-		if exponent <= 0 then fraction * 0x400 / math.ldexp(1, math.abs(exponent)) else fraction * 0x800
-	) % 0x400
-
-	local result = mantissa + math.max(exponent, 0) * 0x400 + if float < 0 then 0x8000 else 0
-
-	return result
-end
-
 local function UnpackSnapshotData(
 	buff: buffer,
 	offset: number
