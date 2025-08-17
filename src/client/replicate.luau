@@ -58,35 +58,6 @@ local function ReadVlqRaw(b: buffer, index: number): (number, number)
 	return value - 1, index
 end
 
-local function PackF16(float: number): number
-	if float > 65504 then
-		return 0b0_11111_0000000000
-	end
-	if float < -65504 then
-		return 0b1_11111_0000000000
-	end
-	if float ~= float then
-		return 0b1_11111_0000000001
-	end
-	if float == 0 then
-		return 0
-	end
-
-	local absolute = math.abs(float)
-	local interval = math.ldexp(1, math.floor(math.log(absolute, 2)) - 10)
-	local rounded = (absolute // interval) * interval
-	local fraction, exponent = math.frexp(rounded)
-	exponent += 14
-
-	local mantissa = math.round(
-		if exponent <= 0 then fraction * 0x400 / math.ldexp(1, math.abs(exponent)) else fraction * 0x800
-	) % 0x400
-
-	local result = mantissa + math.max(exponent, 0) * 0x400 + if float < 0 then 0x8000 else 0
-
-	return result
-end
-
 local function UnpackSnapshotData(
 	buff: buffer,
 	offset: number
@@ -100,34 +71,17 @@ local function UnpackSnapshotData(
 	local x = buffer.readf32(buff, offset + 4)
 	local y = buffer.readf32(buff, offset + 8)
 	local z = buffer.readf32(buff, offset + 12)
-	value.cframe = {}
-	value.cframe.Position = Vector3.new(x, y, z)
 
-	local encoded = buffer.readu16(buff, offset + 16)
+	local rotationY = buffer.readu16(buff, offset + 16)
+	local remappedRotationY = math.map(rotationY, 0, 2^16 - 1, -math.pi, math.pi)
+
+	value.cframe = {
+		Position = Vector3.new(x, y, z),
+		RotationY = remappedRotationY
+	}
+
 	local id, newOffset = ReadVlqRaw(buff, offset + 18)
-	local mantissaExponent = encoded % 0x8000
 	value.id = id
-
-	if mantissaExponent == 0b0_11111_0000000000 then
-		value.cframe.RotationY = if encoded // 0x8000 == 1 then -math.huge else math.huge
-	elseif mantissaExponent == 0b1_11111_0000000000 then
-		value.cframe.RotationY = 0 / 0
-	elseif mantissaExponent == 0b0_00000_0000000000 then
-		value.cframe.RotationY = 0
-	else
-		local mantissa = mantissaExponent % 0x400
-		local exponent = mantissaExponent // 0x400
-		local fraction
-
-		if exponent == 0 then
-			fraction = mantissa / 0x400
-		else
-			fraction = mantissa / 0x800 + 0.5
-		end
-
-		local result = math.ldexp(fraction, exponent - 14)
-		value.cframe.RotationY = if encoded // 0x8000 == 1 then -result else result
-	end
 
 	return value, newOffset
 end
@@ -144,7 +98,8 @@ local function PackSnapshotData(
 	buffer.writef32(buff, offset + 8, cframe.Position.Y)
 	buffer.writef32(buff, offset + 12, cframe.Position.Z)
 
-	buffer.writeu16(buff, offset + 16, PackF16(cframe.RotationY))
+	local mappedRotationY = math.map(cframe.RotationY, -math.pi, math.pi, 0, 2^16 - 1)
+	buffer.writeu16(buff, offset + 16, mappedRotationY)
 end
 
 local function Flush()
