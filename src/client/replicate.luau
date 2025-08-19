@@ -217,7 +217,6 @@ local function PlayerAdded(player: Player, id: number)
 
 	local registeredSnapshots = Snapshots(CFrame.identity.Lerp)
 
-	local initialRenderTime = os.clock()
 
 	if Config.ENABLE_CUSTOM_CHARACTERS then
 		local rig = Rig(player, player.UserId)
@@ -247,8 +246,6 @@ local function PlayerAdded(player: Player, id: number)
 	if characters[player] and characters[player].PrimaryPart then
 		initialCFrame = (characters[player] :: any).PrimaryPart.CFrame
 	end
-
-	registeredSnapshots:Push(initialRenderTime, initialCFrame)
 
 	idMap[id] = {
 		snapshot = registeredSnapshots,

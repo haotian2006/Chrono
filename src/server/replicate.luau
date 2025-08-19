@@ -305,9 +305,6 @@ local function TogglePlayerReplication(player: Player, on: boolean)
 end
 
 local function UpdateTick(id: number, tickRate: number)
-	if id == 10 then
-		print("UpdateTick", tickRate)
-	end
 	Events.TickRateChanged.FireAll({
 		id = id,
 		tickRate = tickRate,

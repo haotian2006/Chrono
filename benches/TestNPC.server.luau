@@ -5,7 +5,7 @@ local Chrono = require(ReplicatedStorage.Packages.chrono.shared.npcCache)
 
 local Models = {}
 
-local ENABLED = true
+local ENABLED = false
 
 local USE_CHRONO = true
 local NUM_MODELS = 50
