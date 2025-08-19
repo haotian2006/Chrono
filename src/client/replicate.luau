@@ -31,7 +31,7 @@ local idMap = {} :: {
 }
 
 local player = Players.LocalPlayer
-local initializedPlayers = {} :: { [Player]: boolean }
+local initializedPlayers = {} :: { [Player]: Model }
 local characters = {} :: { [Player]: Model }
 local playerTickRates = {} :: { [number]: number }
 local pausedPlayers = {} :: { [number]: boolean }
@@ -73,11 +73,11 @@ local function UnpackSnapshotData(
 	local z = buffer.readf32(buff, offset + 12)
 
 	local rotationY = buffer.readu16(buff, offset + 16)
-	local remappedRotationY = math.map(rotationY, 0, 2^16 - 1, -math.pi, math.pi)
+	local remappedRotationY = math.map(rotationY, 0, 2 ^ 16 - 1, -math.pi, math.pi)
 
 	value.cframe = {
 		Position = Vector3.new(x, y, z),
-		RotationY = remappedRotationY
+		RotationY = remappedRotationY,
 	}
 
 	local id, newOffset = ReadVlqRaw(buff, offset + 18)
@@ -98,7 +98,7 @@ local function PackSnapshotData(
 	buffer.writef32(buff, offset + 8, cframe.Position.Y)
 	buffer.writef32(buff, offset + 12, cframe.Position.Z)
 
-	local mappedRotationY = math.map(cframe.RotationY, -math.pi, math.pi, 0, 2^16 - 1)
+	local mappedRotationY = math.map(cframe.RotationY, -math.pi, math.pi, 0, 2 ^ 16 - 1)
 	buffer.writeu16(buff, offset + 16, mappedRotationY)
 end
 
@@ -159,19 +159,22 @@ local function UnregisterNPC(id: number): Model?
 end
 
 local function PlayerAdded(player: Player, id: number)
-	if initializedPlayers[player] then
-		warn("Player already initialized", player)
+	local initializedCharacter = player.Character or player.CharacterAdded:Wait()
+
+	if initializedPlayers[player] == initializedCharacter then
+		warn("Player already initialized for this character", player)
 		return
 	end
+
+	initializedPlayers[player] = initializedCharacter
 
 	if player == Players.LocalPlayer then
 		playerNetworkId = id
 	end
 
-	initializedPlayers[player] = true
+	initializedPlayers[player] = initializedCharacter
 
 	local registeredSnapshots = Snapshots(CFrame.identity.Lerp)
-
 
 	if Config.ENABLE_CUSTOM_CHARACTERS then
 		local rig = Rig(player, player.UserId)

@@ -73,7 +73,7 @@ local function PackSnapshotData(
 	buffer.writef32(buff, offset + 8, cframe.Position.Y)
 	buffer.writef32(buff, offset + 12, cframe.Position.Z)
 
-	local mappedRotationY = math.map(cframe.RotationY, -math.pi, math.pi, 0, 2^16 - 1)
+	local mappedRotationY = math.map(cframe.RotationY, -math.pi, math.pi, 0, 2 ^ 16 - 1)
 	buffer.writeu16(buff, offset + 16, mappedRotationY)
 	return WriteVlqRaw(buff, offset + 18, id)
 end
@@ -88,13 +88,13 @@ local function UnpackSnapshotData(
 	local x = buffer.readf32(buff, offset + 4)
 	local y = buffer.readf32(buff, offset + 8)
 	local z = buffer.readf32(buff, offset + 12)
-	
+
 	local rotationY = buffer.readu16(buff, offset + 16)
-	local remappedRotationY = math.map(rotationY, 0, 2^16 - 1, -math.pi, math.pi)
+	local remappedRotationY = math.map(rotationY, 0, 2 ^ 16 - 1, -math.pi, math.pi)
 
 	value.cframe = {
 		Position = Vector3.new(x, y, z),
-		RotationY = remappedRotationY
+		RotationY = remappedRotationY,
 	}
 
 	return value
@@ -321,10 +321,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 		local character = data.player and data.player.Character or nil
 		local isNPC = data.serverOwned == true
 
-		if
-			not isNPC
-			and (not character or not character.PrimaryPart or not data.clientLastTick)
-		then
+		if not isNPC and (not character or not character.PrimaryPart or not data.clientLastTick) then
 			continue
 		end
 
