@@ -40,6 +40,18 @@ Toggles whether Chrono should interpolate the player
 
 ---
 
+### `Replicators`
+
+A table mapping **network IDs → dummy Models** used when  
+`Config.DISABLE_DEFAULT_REPLICATION = true`.
+
+- Replicators are **visual proxies** cloned from `StarterPlayer.Replicator`  
+  and parented to `workspace.CurrentCamera`.  
+- Chrono updates them each frame with `BulkMoveTo` based on snapshots.  
+- They are useful for running queries on the player's characters on the server
+
+---
+
 ## Notes
 
 - ChronoServer drives **all server-side replication**  
