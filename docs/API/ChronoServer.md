@@ -48,7 +48,8 @@ A table mapping **network IDs → dummy Models** used when
 - Replicators are **visual proxies** cloned from `StarterPlayer.Replicator`  
   and parented to `workspace.CurrentCamera`.  
 - Chrono updates them each frame with `BulkMoveTo` based on snapshots.  
-- They are useful for running queries on the player's characters on the server
+- They are useful for running queries on the player's characters on the server.
+- You can also access a player's replicator via workspace.Camera[player.Name].
 
 ---
 

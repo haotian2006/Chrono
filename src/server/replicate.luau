@@ -127,6 +127,7 @@ local function OnCharacterAdded(player: Player, character: Model, id: number)
 	if Config.DISABLE_DEFAULT_REPLICATION then
 		if StarterPlayer:FindFirstChild("Replicator") then
 			local clone: Model = StarterPlayer.Replicator:Clone()
+			clone.Name = player.Name
 			clone.Parent = workspace.CurrentCamera
 
 			replicators[id] = clone
