@@ -172,8 +172,6 @@ local function PlayerAdded(player: Player, id: number)
 		playerNetworkId = id
 	end
 
-	initializedPlayers[player] = initializedCharacter
-
 	local registeredSnapshots = Snapshots(CFrame.identity.Lerp)
 
 	if Config.ENABLE_CUSTOM_CHARACTERS then
