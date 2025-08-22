@@ -231,7 +231,7 @@ ClientReplicateCFrame.OnServerEvent:Connect(function(player: Player, snapshotBuf
 	end
 
 	local character = player.Character
-	local hrp = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hrp = character and character.PrimaryPart :: BasePart?
 	if config.DISABLE_DEFAULT_REPLICATION and hrp then
 		hrp.Anchored = true
 	end
@@ -368,9 +368,7 @@ RunService.PostSimulation:Connect(function(deltaTime)
 
 	--Since we disabled roblox replication, we won't be able to easily do collision detections on the server
 	--This module has each player be represented as a dummy parented to the camera (will not replicate)
-	--and i simply bulkmoveto them to the latest character CFrame
-	local staged = {}
-	local targets = {}
+	-- ~and i simply bulkmoveto them to the latest character CFrame~ BULK move to didn't work with r6 primary part
 	for id, clone in replicators do
 		local data = idMap[id]
 		local primaryPart = clone.PrimaryPart :: BasePart?
@@ -378,15 +376,12 @@ RunService.PostSimulation:Connect(function(deltaTime)
 			local latestSnapshot = data.snapshot:GetLatest()
 
 			if latestSnapshot then
-				table.insert(staged, primaryPart)
-				table.insert(targets, latestSnapshot.value)
+				primaryPart.CFrame = latestSnapshot.value
 			end
 		end
 	end
 
-	if #staged > 0 then
-		workspace:BulkMoveTo(staged, targets)
-	end
+
 end)
 
 --Exposes a function for other scripts to get the most up to date CFrame of a player or npc

@@ -160,6 +160,9 @@ end
 
 local function PlayerAdded(player: Player, id: number)
 	local initializedCharacter = player.Character or player.CharacterAdded:Wait()
+	if not initializedCharacter.Parent then
+		initializedCharacter = player.CharacterAdded:Wait()
+	end
 
 	if initializedPlayers[player] == initializedCharacter then
 		warn("Player already initialized for this character", player)
@@ -187,11 +190,11 @@ local function PlayerAdded(player: Player, id: number)
 		workspace.CurrentCamera.CameraSubject = rig.Model:FindFirstChildOfClass("Humanoid") or rig.Model.PrimaryPart
 	else
 		local character = player.Character or player.CharacterAdded:Wait()
-		local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
-		humanoidRootPart.Anchored = false
+		local primaryPart = character.PrimaryPart :: BasePart
+		primaryPart.Anchored = false
 
-		humanoidRootPart:GetPropertyChangedSignal("Anchored"):Connect(function()
-			humanoidRootPart.Anchored = false
+		primaryPart:GetPropertyChangedSignal("Anchored"):Connect(function()
+			primaryPart.Anchored = false
 		end)
 
 		characters[player] = character
@@ -296,10 +299,6 @@ end)
 
 RunService.PreRender:Connect(function(deltaTime: number)
 	RenderCache.Update(deltaTime)
-
-	local parts = {}
-	local cframes = {}
-	local index = 0
 	debug.profilebegin("Calculate CFrames")
 	for id, data in idMap do
 		if not data.character or data.character == player.Character then
@@ -327,15 +326,12 @@ RunService.PreRender:Connect(function(deltaTime: number)
 			-- make sure it isn't welded to anything else (e.g. being carried)
 
 			if primaryPart.AssemblyRootPart == primaryPart then
-				index += 1
-				parts[index] = primaryPart
-				cframes[index] = targetCFrame
+				primaryPart.CFrame = targetCFrame
 			end
 		end
 		debug.profileend()
 	end
 	debug.profileend()
-	workspace:BulkMoveTo(parts, cframes)
 end)
 
 local lastSentCFrame = CFrame.identity
