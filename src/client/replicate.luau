@@ -191,10 +191,20 @@ local function PlayerAdded(player: Player, id: number)
 	else
 		local character = player.Character or player.CharacterAdded:Wait()
 		local primaryPart = character.PrimaryPart :: BasePart
-		primaryPart.Anchored = false
-
-		primaryPart:GetPropertyChangedSignal("Anchored"):Connect(function()
+		task.spawn(function()
+			if not primaryPart then
+				task.wait(1) -- for some reason primary part didn't exist immediately?
+				primaryPart = character.PrimaryPart :: BasePart
+			end
+			if not primaryPart then
+				warn("Player has no primary part", player, character)
+				return
+			end
 			primaryPart.Anchored = false
+
+			primaryPart:GetPropertyChangedSignal("Anchored"):Connect(function()
+				primaryPart.Anchored = false
+			end)
 		end)
 
 		characters[player] = character
@@ -281,6 +291,7 @@ ServerReplicateCFrame.OnClientEvent:Connect(function(snapshotBuffer)
 	local cframes = {}
 	local timestamps = {}
 	local count, offset = ReadVlqRaw(snapshotBuffer, 0)
+
 	for i = 1, count do
 		local snapshot, offset_ = UnpackSnapshotData(snapshotBuffer, offset)
 		offset = offset_
@@ -340,7 +351,6 @@ RunService.PostSimulation:Connect(function()
 		return
 	end
 	lastSent = os.clock()
-
 	if not player.Character then
 		return
 	end
@@ -366,7 +376,6 @@ RunService.PostSimulation:Connect(function()
 		timestamp = os.clock(),
 		cframe = networkable,
 	})
-
 	Flush()
 end)
 
