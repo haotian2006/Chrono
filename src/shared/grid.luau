@@ -138,6 +138,9 @@ function Grid.AddEntity(entity: Model, entityType: string)
 end
 
 function Grid.RemoveEntity(entity: Model)
+	if lastPositions[entity] then
+		RemoveOld(entity, entities[entity], lastPositions[entity])
+	end
 	entities[entity] = nil
 	lastPositions[entity] = nil
 end
