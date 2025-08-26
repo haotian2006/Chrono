@@ -28,11 +28,13 @@ local playerIdMap = {} :: { [Player]: number }
 local idMap = {} :: {
 	[number]: {
 		player: Player?,
-		snapshot: Snapshots.CircularSnapshot<CFrame>,
+		snapshot: Snapshots.Snapshot<CFrame>,
 		clientLastTick: number?,
 		serverOwned: boolean?,
 		npcType: string?,
 		model: Model?,
+		_charAdded: RBXScriptConnection?,
+		_charRemoving: RBXScriptConnection?,
 	},
 }
 local pausedPlayers = {} :: { [number]: boolean }
@@ -184,20 +186,30 @@ Players.PlayerAdded:Connect(function(player: Player)
 
 		serverOwned = false,
 		npcType = nil,
+		_charAdded = nil,
+		_charRemoving = nil,
 	}
 	lastReplicatedTimes[id] = 0
 
 	InitExistingPlayers(player)
 
-	player.CharacterAdded:Connect(function(character)
+	idMap[id]._charAdded = player.CharacterAdded:Connect(function(character)
 		OnCharacterAdded(player, character, id)
 	end)
-	player.CharacterRemoving:Connect(OnCharacterRemoving)
+	idMap[id]._charRemoving = player.CharacterRemoving:Connect(OnCharacterRemoving)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
 	local id = playerIdMap[player]
 	if id then
+		local _charAdded = idMap[id]._charAdded
+		if _charAdded then
+			_charAdded:Disconnect()
+		end
+		local _charRemoving = idMap[id]._charRemoving
+		if _charRemoving then
+			_charRemoving:Disconnect()
+		end
 		idMap[id] = nil
 		lastReplicatedTimes[id] = nil
 		playerIdMap[player] = nil

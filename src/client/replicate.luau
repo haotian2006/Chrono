@@ -22,11 +22,12 @@ local ServerReplicateCFrame: UnreliableRemoteEvent = ReplicatedStorage:WaitForCh
 
 local idMap = {} :: {
 	[number]: {
-		snapshot: Snapshots.CircularSnapshot<CFrame>,
+		snapshot: Snapshots.Snapshot<CFrame>,
 		character: Model?,
 		lastCFrame: CFrame?,
 		isNPC: boolean?,
 		npcType: string?,
+		player: Player?
 	},
 }
 
@@ -176,6 +177,11 @@ local function PlayerAdded(player: Player, id: number)
 	end
 
 	local registeredSnapshots = Snapshots(CFrame.identity.Lerp)
+	
+	local old = characters[player]
+	if old then
+		pcall(old.Destroy, old)
+	end
 
 	if Config.ENABLE_CUSTOM_CHARACTERS then
 		local rig = Rig(player, player.UserId)
@@ -217,6 +223,7 @@ local function PlayerAdded(player: Player, id: number)
 	end
 
 	idMap[id] = {
+		player = player,
 		snapshot = registeredSnapshots,
 		character = characters[player],
 		lastCFrame = initialCFrame,
@@ -377,6 +384,28 @@ RunService.PostSimulation:Connect(function()
 		cframe = networkable,
 	})
 	Flush()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	local idToRemove = nil
+	for id, data in idMap do
+		if data.player == player then
+			idToRemove = id
+			break
+		end
+	end
+
+	if idToRemove then
+		RenderCache.Remove(idToRemove)
+		idMap[idToRemove] = nil
+	end
+
+	initializedPlayers[player] = nil
+	local character = characters[player]
+	characters[player] = nil
+	if character then
+		pcall(character.Destroy, character)
+	end
 end)
 
 return {
